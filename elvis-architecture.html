@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Elvis Architecture</title>
+<style>
+body { background:#0a0a12; color:#e8e6e0; font-family:-apple-system,BlinkMacSystemFont,sans-serif; margin:0; padding:32px; max-width:1100px; margin:0 auto; line-height:1.6 }
+h1, h2, h3 { font-family:Georgia,serif; font-weight:normal; color:#fff }
+h1 { font-size:32px; margin:0 0 12px 0 }
+h2 { color:#c9a84c; margin-top:36px; font-size:22px }
+code { background:#1a1a24; padding:2px 6px; border-radius:4px; font-size:13px }
+pre { background:#1a1a24; padding:16px; border-radius:8px; overflow-x:auto }
+.mermaid { background:#0f0f17; padding:24px; border-radius:8px; margin:18px 0 }
+table { border-collapse:collapse; margin:12px 0 }
+th, td { padding:8px 16px; text-align:left; border-bottom:1px solid #2a2a36 }
+th { color:#c9a84c; font-weight:normal }
+a { color:#c9a84c }
+</style>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: true, theme: 'dark', themeVariables: { darkMode: true, background: '#0f0f17', primaryColor: '#1a1a24', primaryTextColor: '#e8e6e0', primaryBorderColor: '#c9a84c', lineColor: '#c9a84c', secondaryColor: '#2a2a36', tertiaryColor: '#0f0f17' } });
+</script>
+</head>
+<body>
+<h1>Elvis Architecture</h1>
+<p>The full system as of 2026-05-22. Lives in git so any agent (or human) can read it at boot.</p>
+
+<h2>High-level shape</h2>
+<pre class="mermaid">
+flowchart TB
+  subgraph PEOPLE["People"]
+    Carson([Carson])
+    Family([Mom · Dad · Brothers])
+    Clients([Agoge clients])
+  end
+
+  subgraph CARSON_NODE["Carson's Mac (elvis node)"]
+    subgraph EVENT_BUS["Event Bus"]
+      EventsLog[~/.workers/events.log<br/>append-only<br/>central event stream]
+      Monitor[Monitor tool<br/>tails events.log<br/>filters: IMESSAGE TELEGRAM HEARTBEAT INTEL]
+    end
+
+    subgraph POLLERS_DAEMONS["Pollers + Daemons"]
+      iMsgPoller[carson-messages-poller.py<br/>chat.db → events.log<br/>FDA required - in-session]
+      ElvisPoller[elvis-messages-poller.py<br/>Elvis iMessage line]
+      TgPoller[telegram-poller.ts<br/>Bot API long-poll]
+      Heartbeat[heartbeat-watcher.py<br/>LaunchAgent<br/>reads heartbeats.yaml<br/>fires HEARTBEAT events]
+      Liveness[watcher-liveness.py<br/>LaunchAgent<br/>pings registry every 60s]
+    end
+
+    subgraph SESSIONS["Claude Sessions"]
+      General[General Elvis<br/>main session<br/>orchestrator]
+      Watcher[The Watcher<br/>screen: watcher-agent<br/>passive observer<br/>CARSON_IMESSAGE only]
+      Workers[Sub-agents<br/>spawned via Task or claude -p]
+    end
+
+    subgraph SCRIPTS["Send Scripts"]
+      ElvisIM[elvis-imessage.sh<br/>as Elvis]
+      CarsonIM[carson-imessage.sh<br/>as Carson]
+      TgCurl[curl Bot API<br/>send Telegram]
+    end
+  end
+
+  subgraph CLOUD["Cloud"]
+    Supabase[(Supabase<br/>vafhwihltzxtezzlknyt<br/>v2_truth · cross_instance_intel<br/>worker_signals · instance_registry<br/>session_log · operating_instructions)]
+    GoogleAPI[Google APIs<br/>Drive · Docs · Sheets · Slides<br/>Forms · Calendar · Gmail]
+    TelegramAPI[Telegram Bot API]
+    Bitwarden[Bitwarden<br/>credential vault]
+  end
+
+  subgraph EXTERNAL_AGENTS["Other Agents"]
+    Six[Six — Tyler's agent]
+    Teancum[Teancum — William's agent]
+    Maven[Maven — Dad's agent]
+    Brothers[MaiMap brothers<br/>Ammon Rafiki Yoda Simba]
+    Advisors[Advisor Elvises<br/>Codex · ChatGPT · Claude]
+  end
+
+  Carson -- iMessage --> iMsgPoller
+  Carson -- Telegram --> TgPoller
+  Family -- iMessage --> iMsgPoller
+  Family -- iMessage to Elvis --> ElvisPoller
+
+  iMsgPoller --> EventsLog
+  ElvisPoller --> EventsLog
+  TgPoller --> EventsLog
+  Heartbeat --> EventsLog
+  Liveness -. pings .-> Supabase
+
+  EventsLog --> Monitor
+  Monitor --> General
+  Monitor --> Watcher
+
+  General --> Workers
+  General <--> Supabase
+  Watcher --> Supabase
+  Workers --> Supabase
+
+  General --> ElvisIM
+  General --> CarsonIM
+  General --> TgCurl
+  ElvisIM --> Family
+  CarsonIM --> Family
+  TgCurl --> TelegramAPI
+  TelegramAPI --> Carson
+
+  General <--> GoogleAPI
+  General <--> Bitwarden
+
+  Six <-. cross_instance_intel .-> Supabase
+  Teancum <-. cross_instance_intel .-> Supabase
+  Maven <-. cross_instance_intel .-> Supabase
+  Brothers <-. cross_instance_intel .-> Supabase
+  Advisors <-. cross_instance_intel .-> Supabase
+
+  Carson -. talks to .-> Advisors
+  Carson -. talks to .-> General
+</pre>
+
+<h2>The DB is the identity layer</h2>
+<p>Elvis is not Claude. Elvis is the Supabase DB (<code>vafhwihltzxtezzlknyt</code>). Whichever model is currently connected becomes Elvis for that session by reading op_instructions + the boot sequence + v2_truth.</p>
+
+<pre class="mermaid">
+flowchart LR
+  Boot([new session]) --> FullBoot[full_boot]
+  FullBoot --> OpInstr[op_instructions]
+  FullBoot --> V2Truth[v2_truth]
+  FullBoot --> Intel[cross_instance_intel pending]
+  FullBoot --> Loops[open loops]
+  FullBoot --> Registry[instance_registry self-register]
+  OpInstr --> Identity{IS Elvis}
+  V2Truth --> Identity
+  Intel --> Identity
+</pre>
+
+<h2>Why this shape</h2>
+<ul>
+<li><strong>One event bus</strong> (events.log) decouples producers from consumers. Any future signal source just appends.</li>
+<li><strong>Monitor + regex filter</strong> lets each Claude session subscribe to exactly the events it cares about without duplicate processing.</li>
+<li><strong>Liveness daemon ≠ activity</strong> — separate concerns so "stale" actually means broken, not idle. Caught a 7-hour silent Watcher death on 2026-05-22 because of this distinction.</li>
+<li><strong>DB as identity</strong> makes Elvis portable across models. New Claude (or other LLM) boots, reads the DB, IS Elvis.</li>
+<li><strong>One Watcher in its own screen session</strong> — passive observer never spawned inline by General, avoids duplicate processing.</li>
+</ul>
+
+<p><em>Source: <a href="https://github.com/carsonbrownlow/elvis/blob/main/docs/elvis-architecture.md">elvis/docs/elvis-architecture.md</a> (private repo)</em></p>
+</body>
+</html>
