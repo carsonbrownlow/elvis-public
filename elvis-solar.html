@@ -71,6 +71,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const PLANETS = [
@@ -143,19 +144,59 @@ const FLARE=(function(){const s=256,cv=document.createElement('canvas');cv.width
   return new THREE.CanvasTexture(cv);})();
 function addFlare(parent,size,color){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:FLARE,color,transparent:true,opacity:0.9,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}));sp.scale.setScalar(size);parent.add(sp);return sp;}
 
+// ── custom plasma-star shader: a roiling surface + corona, not a glowing ball ──
+const SNOISE=`
+vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec4 permute(vec4 x){return mod289(((x*34.0)+1.0)*x);}
+vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}
+float snoise(vec3 v){const vec2 C=vec2(1.0/6.0,1.0/3.0);const vec4 D=vec4(0.0,0.5,1.0,2.0);
+ vec3 i=floor(v+dot(v,C.yyy));vec3 x0=v-i+dot(i,C.xxx);
+ vec3 g=step(x0.yzx,x0.xyz);vec3 l=1.0-g;vec3 i1=min(g.xyz,l.zxy);vec3 i2=max(g.xyz,l.zxy);
+ vec3 x1=x0-i1+C.xxx;vec3 x2=x0-i2+C.yyy;vec3 x3=x0-D.yyy;i=mod289(i);
+ vec4 p=permute(permute(permute(i.z+vec4(0.0,i1.z,i2.z,1.0))+i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));
+ float n_=0.142857142857;vec3 ns=n_*D.wyz-D.xzx;vec4 j=p-49.0*floor(p*ns.z*ns.z);
+ vec4 x_=floor(j*ns.z);vec4 y_=floor(j-7.0*x_);vec4 x=x_*ns.x+ns.yyyy;vec4 y=y_*ns.x+ns.yyyy;vec4 h=1.0-abs(x)-abs(y);
+ vec4 b0=vec4(x.xy,y.xy);vec4 b1=vec4(x.zw,y.zw);vec4 s0=floor(b0)*2.0+1.0;vec4 s1=floor(b1)*2.0+1.0;vec4 sh=-step(h,vec4(0.0));
+ vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy;vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
+ vec3 p0=vec3(a0.xy,h.x);vec3 p1=vec3(a0.zw,h.y);vec3 p2=vec3(a1.xy,h.z);vec3 p3=vec3(a1.zw,h.w);
+ vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));p0*=norm.x;p1*=norm.y;p2*=norm.z;p3*=norm.w;
+ vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0);m=m*m;
+ return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));}
+float fbm(vec3 p){float f=0.0,a=0.5;for(int i=0;i<5;i++){f+=a*snoise(p);p*=2.03;a*=0.5;}return f;}`;
+const STAR_VERT=`varying vec3 vPos;varying vec3 vNrm;varying vec3 vView;
+void main(){vPos=position;vNrm=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.0);vView=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}`;
+const STAR_FRAG=SNOISE+`
+uniform float uTime;uniform vec3 uHot;uniform vec3 uCool;uniform float uScale;uniform float uBright;
+varying vec3 vPos;varying vec3 vNrm;varying vec3 vView;
+void main(){vec3 p=normalize(vPos);
+ float n=fbm(p*uScale+vec3(0.0,uTime*0.12,0.0));
+ float n2=fbm(p*uScale*2.4-vec3(uTime*0.08));
+ float plasma=clamp(0.5+0.5*n+0.22*n2,0.0,1.0);
+ vec3 col=mix(uCool*0.5,uHot,smoothstep(0.04,0.93,plasma));
+ col+=uHot*pow(max(plasma-0.72,0.0),2.0)*1.25;
+ float fres=pow(1.0-max(dot(normalize(vNrm),normalize(vView)),0.0),3.0);
+ col+=uHot*fres*0.8;
+ gl_FragColor=vec4(col*uBright,1.0);}`;
+const starMats=[];
+function makeStarMat(hot,cool,scale,bright){
+  const m=new THREE.ShaderMaterial({uniforms:{uTime:{value:0},uHot:{value:new THREE.Color(hot).convertSRGBToLinear()},uCool:{value:new THREE.Color(cool).convertSRGBToLinear()},uScale:{value:scale},uBright:{value:bright}},vertexShader:STAR_VERT,fragmentShader:STAR_FRAG});
+  starMats.push(m); return m;
+}
+
 // binary heart
 const heart=new THREE.Object3D(); scene.add(heart);
-function star(color,x,name,role,cls){
-  const m=new THREE.Mesh(new THREE.IcosahedronGeometry(3.9,1),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:2.8,roughness:.18,metalness:.35,envMapIntensity:1.2,flatShading:true}));
+function star(hot,cool,glow,x,name,role,cls){
+  const m=new THREE.Mesh(new THREE.SphereGeometry(4.1,72,72),makeStarMat(hot,cool,3.4,1.0));
   m.position.x=x; heart.add(m);
-  m.add(new THREE.Mesh(new THREE.SphereGeometry(6.6,32,32),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.16,blending:THREE.AdditiveBlending,depthWrite:false})));
-  m.userData={card:{kind:'The center',name,role,color:'#'+color.toString(16),pipes:null}}; pickables.push(m);
-  addFlare(m,33,color);
-  const l=lab(name,'star '+cls); l.position.set(0,8,0); m.add(l); l.userData.el.classList.add('on');
+  // soft outer corona glow
+  m.add(new THREE.Mesh(new THREE.SphereGeometry(7.0,40,40),new THREE.MeshBasicMaterial({color:glow,transparent:true,opacity:.12,blending:THREE.AdditiveBlending,depthWrite:false})));
+  m.userData={card:{kind:'The center',name,role,color:'#'+glow.toString(16),pipes:null}}; pickables.push(m);
+  const l=lab(name,'star '+cls); l.position.set(0,8.4,0); m.add(l); l.userData.el.classList.add('on');
   return m;
 }
-const carson=star(0xfff1d6,13,'Carson','You. The whole system exists for you — every body here orbits this point. The north star is your mission.','');
-const elvis =star(0xffba6e,-13,'Elvis','The persona — your partner at the heart of it all. But what makes Elvis *Elvis* doesn’t live in the model; it lives in the database at the foot of this axis. The model is just the vehicle.','');
+const carson=star(0xfff3d8,0xd9701e,0xffe7c0,13,'Carson','You. The whole system exists for you — every body here orbits this point. The north star is your mission.','');
+const elvis =star(0xffc785,0xc0531a,0xffb060,-13,'Elvis','The persona — your partner at the heart of it all. But what makes Elvis *Elvis* doesn’t live in the model; it lives in the database at the foot of this axis. The model is just the vehicle.','');
 
 // ───────── THE VERTICAL AXIS — source (top) · the binary (center) · the database (foundation) ─────────
 // the spine: a beam of light running the full height, connecting purpose above to foundation below
@@ -164,10 +205,9 @@ scene.add(beam);
 
 // TOP — the source: the mission everything serves, light pouring in from above
 const SRC_Y=94;
-const source=new THREE.Mesh(new THREE.IcosahedronGeometry(4.6,0),new THREE.MeshStandardMaterial({color:0xfff3d4,emissive:0xffe6b0,emissiveIntensity:3.0,roughness:.15,metalness:.4,envMapIntensity:1.2,flatShading:true}));
+const source=new THREE.Mesh(new THREE.SphereGeometry(4.8,72,72),makeStarMat(0xfff6e4,0xe8a23e,3.0,1.25));
 source.position.set(0,SRC_Y,0); scene.add(source); pickables.push(source);
-source.add(new THREE.Mesh(new THREE.SphereGeometry(8.8,32,32),new THREE.MeshBasicMaterial({color:0xffe6b0,transparent:true,opacity:.13,blending:THREE.AdditiveBlending,depthWrite:false})));
-addFlare(source,46,0xffe6b0);
+source.add(new THREE.Mesh(new THREE.SphereGeometry(9.2,40,40),new THREE.MeshBasicMaterial({color:0xffe6b0,transparent:true,opacity:.12,blending:THREE.AdditiveBlending,depthWrite:false})));
 const srcLight=new THREE.PointLight(0xffe8bc,1.3,320,1.4); srcLight.position.set(0,SRC_Y,0); scene.add(srcLight);
 // soft cloud cradle around the source — it sits in light, like the reference
 (function(){const cv=document.createElement('canvas');cv.width=cv.height=256;const x=cv.getContext('2d');const gr=x.createRadialGradient(128,128,8,128,128,128);gr.addColorStop(0,'rgba(255,228,184,0.5)');gr.addColorStop(0.5,'rgba(214,176,150,0.12)');gr.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=gr;x.fillRect(0,0,256,256);const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,opacity:0.6,blending:THREE.AdditiveBlending,depthWrite:false}));sp.position.set(0,SRC_Y,-3);sp.scale.setScalar(76);scene.add(sp);})();
@@ -198,10 +238,23 @@ dbHit.userData={card:{kind:'The foundation · below',name:'The Database',color:'
   tables:['v2_truth — core · elvis · symbiosis · operations · vivere · epics · agoge · maimap · openclaw','cross_instance_intel — the agent ↔ agent bridge','operating_instructions','relationship_hypotheses','instance_registry','inbox']}};
 const dlab=lab('the database','star'); dlab.position.set(0,(diskH+gap)*2+9,0); dbGroup.add(dlab); dlab.userData.el.classList.add('on');
 
-function ring(r,c,op){const N=Math.max(120,Math.floor(r*8)),pos=new Float32Array(N*3);for(let i=0;i<N;i++){const a=i/N*6.28318;pos[i*3]=Math.cos(a)*r;pos[i*3+1]=0;pos[i*3+2]=Math.sin(a)*r;}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));const m=new THREE.PointsMaterial({color:c,size:1.35,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false});const pts=new THREE.Points(g,m);scene.add(pts);return pts;}
+// smooth luminous orbit ring with an optional comet-head trail (bright at the planet, fading behind)
+function glowRing(r,color,head,base){
+  const geo=new THREE.RingGeometry(r-1.4,r+1.4,Math.max(180,Math.floor(r*3)),1); geo.rotateX(-Math.PI/2);
+  const mat=new THREE.ShaderMaterial({transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,
+    uniforms:{uAngle:{value:0},uColor:{value:new THREE.Color(color).convertSRGBToLinear()},uR:{value:r},uHead:{value:head?1.0:0.0},uBase:{value:base}},
+    vertexShader:`varying vec3 vP;void main(){vP=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+    fragmentShader:`uniform float uAngle;uniform vec3 uColor;uniform float uR;uniform float uHead;uniform float uBase;varying vec3 vP;
+      void main(){float rr=length(vP.xz);float radial=smoothstep(1.4,0.0,abs(rr-uR));
+        float a=atan(vP.z,vP.x);float d=mod(a-uAngle,6.28318);
+        float trail=exp(-d*0.85)+0.4*exp(-d*4.0);
+        float al=(uBase+uHead*trail)*radial;
+        gl_FragColor=vec4(uColor*(0.7+1.6*al),al);}`});
+  scene.add(new THREE.Mesh(geo,mat)); return mat;
+}
 
 // event bus — the spine every signal flows through
-ring(28,0xffc98a,0.5);
+glowRing(28,0xffc98a,false,0.42);
 const busNode=new THREE.Mesh(new THREE.SphereGeometry(1.5,20,20),new THREE.MeshStandardMaterial({color:0xffcaa0,emissive:0xffcaa0,emissiveIntensity:1.0,roughness:.5}));
 busNode.position.set(0,0,28); scene.add(busNode); pickables.push(busNode);
 busNode.userData={card:{kind:'The spine',name:'Event Bus',role:'~/.workers/events.log — every pipeline appends one tagged line here, and both agents’ monitors tail it and react. The single nerve of the system.',color:'#ffcaa0',monitor:null,out:null,pipes:null}};
@@ -209,22 +262,30 @@ const blab=lab('event bus'); blab.position.set(0,2.6,0); busNode.add(blab); blab
 
 const planets=[];
 PLANETS.forEach((pl,pi)=>{
-  ring(pl.R,0xffc98a,pl.faint?0.32:0.55);
+  const om=glowRing(pl.R,0xffc98a,true,pl.faint?0.07:0.11);
   const pivot=new THREE.Object3D(); pivot.rotation.y=[0.7,2.5,4.2,5.6][pi]; scene.add(pivot);
   const mesh=new THREE.Mesh(new THREE.SphereGeometry(pl.size,44,44),
     new THREE.MeshStandardMaterial({color:pl.color,emissive:pl.color,emissiveIntensity:pl.faint?0.35:0.55,roughness:.22,metalness:.65,envMapIntensity:1.4,transparent:!!pl.faint,opacity:pl.faint?0.6:1}));
   mesh.position.x=pl.R; pivot.add(mesh);
   mesh.userData={card:{kind:pl.kind,name:pl.name,role:pl.role,color:'#'+pl.color.toString(16),monitor:pl.monitor,out:pl.out,pipes:pl.pipes}}; pickables.push(mesh);
   const l=lab(pl.name); l.position.set(0,pl.size+2.4,0); mesh.add(l); l.userData.el.classList.add('on');
-  planets.push({pl,pivot,mesh});
+  planets.push({pl,pivot,mesh,om});
 });
 // decorative concentric rings — layered depth, no bodies (just the field)
-[45,80,116,150,196,228].forEach(r=>ring(r,0xffc98a,0.13));
+[45,80,116,150,196,228].forEach(r=>glowRing(r,0xffc98a,false,0.085));
 
 const composer=new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene,camera));
-composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.72,0.55,0.32));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.6,0.5,0.42));
 composer.addPass(new OutputPass());
+// cinematic grade — vignette + a whisper of chromatic aberration (a shot, not a render)
+composer.addPass(new ShaderPass({uniforms:{tDiffuse:{value:null},uVig:{value:0.92},uCA:{value:0.0019}},
+  vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+  fragmentShader:`uniform sampler2D tDiffuse;uniform float uVig;uniform float uCA;varying vec2 vUv;
+    void main(){vec2 d=vUv-0.5;float r=dot(d,d);float ca=uCA*r*12.0;
+      vec3 col;col.r=texture2D(tDiffuse,vUv-d*ca).r;col.g=texture2D(tDiffuse,vUv).g;col.b=texture2D(tDiffuse,vUv+d*ca).b;
+      float vig=pow(clamp(1.0-uVig*r,0.0,1.0),1.35);
+      gl_FragColor=vec4(col*mix(0.62,1.0,vig),1.0);}`}));
 
 // ---- card ----
 const card=document.getElementById('card');
@@ -247,6 +308,7 @@ function openCard(d){
 function closeCard(){card.classList.remove('open'); document.getElementById('foot').style.opacity='1';}
 document.getElementById('cardClose').onclick=closeCard;
 window.__demo=(name)=>{const m=pickables.find(o=>o.userData.card&&o.userData.card.name===(name||'General'));if(m)openCard(m.userData.card);};
+window.__view=(x,y,z,tx,ty,tz)=>{controls.autoRotate=false;camera.position.set(x,y,z);controls.target.set(tx||0,ty||0,tz||0);controls.update();if(STILL){frames=0;requestAnimationFrame(animate);}};
 
 const ray=new THREE.Raycaster(),m2=new THREE.Vector2();let down=null;
 renderer.domElement.addEventListener('pointerdown',e=>down=[e.clientX,e.clientY]);
@@ -262,11 +324,12 @@ const STILL=location.search.indexOf('still')>=0; let frames=0;
 function animate(){
   const dt=Math.min(clock.getDelta(),0.05),t=clock.elapsedTime;
   controls.update();
+  for(let i=0;i<starMats.length;i++) starMats[i].uniforms.uTime.value=t;
   heart.rotation.y+=dt*0.45;
   const b=1+0.04*Math.sin(t*1.3); carson.scale.setScalar(b); elvis.scale.setScalar(1+0.04*Math.sin(t*1.3+1.4));
   source.rotation.y+=dt*0.25; source.rotation.x+=dt*0.12; source.scale.setScalar(1+0.05*Math.sin(t*0.9));
   dbGroup.rotation.y+=dt*0.16;
-  planets.forEach(p=>{p.pivot.rotation.y+=dt*p.pl.speed;p.mesh.rotation.y+=dt*0.3;});
+  planets.forEach(p=>{p.pivot.rotation.y+=dt*p.pl.speed;p.mesh.rotation.y+=dt*0.3;if(p.om)p.om.uniforms.uAngle.value=-p.pivot.rotation.y;});
   composer.render(); labelR.render(scene,camera);
   if(!(STILL && ++frames>6)) requestAnimationFrame(animate);
 }
