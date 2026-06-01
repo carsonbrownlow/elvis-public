@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="robots" content="noindex,nofollow"/>
+<title>Elvis — Naming Architecture (proposal)</title>
+<style>
+  :root{--bg:#0f1115;--card:#181b22;--ink:#e8eaed;--mut:#9aa0aa;--ok:#2f9e44;--warn:#e8a13a;--risk:#e0463a;--line:#2a2f3a;--accent:#5b8def}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 ui-sans-serif,system-ui,-apple-system,sans-serif;padding:18px;max-width:900px;margin:auto}
+  h1{font-size:22px;margin:6px 0 2px} h2{font-size:18px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:5px}
+  .sub{color:var(--mut);font-size:14px;margin-bottom:14px}
+  .principle{background:var(--card);border-left:3px solid var(--accent);padding:12px 14px;border-radius:8px;margin:14px 0}
+  table{width:100%;border-collapse:collapse;margin:8px 0 4px;font-size:14px}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  code{background:#11141a;padding:1px 5px;border-radius:4px;font-size:13px;color:#cdd4df}
+  .new code{color:#bfe3c8}
+  .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:20px;font-weight:600}
+  .t-ok{background:rgba(47,158,68,.18);color:#7ee2a0} .t-med{background:rgba(232,161,58,.18);color:#f0c074} .t-risk{background:rgba(224,70,58,.18);color:#f0938a}
+  .role{color:var(--mut);font-size:13px}
+  .q{background:rgba(91,141,239,.10);border:1px solid rgba(91,141,239,.35);border-radius:8px;padding:10px 12px;margin:10px 0;font-size:14px}
+  ul{margin:6px 0 6px 18px;padding:0} li{margin:3px 0}
+  .foot{color:var(--mut);font-size:13px;margin-top:26px;border-top:1px solid var(--line);padding-top:12px}
+</style>
+</head>
+<body>
+<h1>Elvis — Naming Architecture</h1>
+<div class="sub">Proposal for Carson · June 1 2026 · react / tweak / lock, then I run one clean migration</div>
+
+<div class="principle">
+<b>The principle:</b> every name should tell you <i>what it is and its role</i> at a glance — no legacy, no jargon that hides function.
+<br><br>
+<b>The unifying idea:</b> one role-vocabulary used at <i>every</i> level. The map's layers = the daemon categories = the script patterns. So <code>poller.gmail</code> (daemon) ⇄ <code>gmail-poller.py</code> (script) ⇄ the "Pollers" layer on the map — the same word means the same role everywhere.
+<br><br>
+<b>Tag key:</b> <span class="tag t-ok">safe</span> rename freely · <span class="tag t-med">medium</span> live daemon, verify on reload · <span class="tag t-risk">load-bearing</span> referenced in many places, staged migration only.
+</div>
+
+<h2>0 · Kill Colonel <span class="tag t-ok">safe</span></h2>
+<p style="font-size:14px">Colonel was the old inbox-classifier layer, <b>already retired 5/12</b>. The only live remnant is the name on 3 LaunchAgents — they get folded into the scheme below. The DB decision-records that <i>document</i> the retirement stay (that's history, not "colonel in use"). After the migration: zero <code>colonel</code> anywhere live.</p>
+
+<h2>1 · Instances (the brains)</h2>
+<table><tr><th>now</th><th>proposed</th><th class="role">role</th></tr>
+<tr><td><code>General Elvis</code></td><td class="new"><code>Elvis</code> <span class="role">(your call)</span></td><td class="role">The operator/agent. "General" is a sibling to the killed "Colonel" (military-rank lineage). Dropping it = just <b>Elvis</b>. ⚠️ touches boot identity (<code>full_boot('general')</code>) — only if you want it.</td></tr>
+<tr><td><code>The Watcher</code></td><td class="new"><code>The Watcher</code></td><td class="role">Keep — already says exactly what it does.</td></tr>
+</table>
+
+<h2>2 · Daemons (background services) <span class="tag t-med">medium</span></h2>
+<p style="font-size:14px">Pattern: <code>ai.elvis.&lt;category&gt;.&lt;name&gt;</code> — category ∈ {<code>poller</code>, <code>scheduler</code>, <code>monitor</code>, <code>task</code>}. The label tells you its job.</p>
+<table><tr><th>now</th><th>proposed</th><th class="role">category = role</th></tr>
+<tr><td><code>ai.colonel.telegram-poller</code></td><td class="new"><code>ai.elvis.poller.telegram</code></td><td class="role">poller = captures a channel</td></tr>
+<tr><td><code>ai.colonel.inbox-watcher</code></td><td class="new"><code>ai.elvis.poller.inbox</code></td><td class="role">captures inbox / bookmarks / intel</td></tr>
+<tr><td><code>ai.colonel.daily-prune</code></td><td class="new"><code>ai.elvis.task.daily-prune</code></td><td class="role">task = scheduled maintenance job</td></tr>
+<tr><td><code>ai.elvis.gmail-watcher</code></td><td class="new"><code>ai.elvis.poller.gmail</code></td><td class="role">poller</td></tr>
+<tr><td><code>ai.elvis.calendar-watcher</code></td><td class="new"><code>ai.elvis.poller.calendar</code></td><td class="role">poller</td></tr>
+<tr><td><code>ai.elvis.carson-shortcuts</code></td><td class="new"><code>ai.elvis.poller.shortcuts</code></td><td class="role">poller</td></tr>
+<tr><td><code>ai.elvis.bookmark-fetcher</code></td><td class="new"><code>ai.elvis.poller.bookmark</code></td><td class="role">poller (renamed off "general" last night)</td></tr>
+<tr><td><code>ai.elvis.heartbeat-watcher-v2</code></td><td class="new"><code>ai.elvis.scheduler.heartbeat</code></td><td class="role">scheduler = fires timed events</td></tr>
+<tr><td><code>ai.elvis.watcher-liveness</code></td><td class="new"><code>ai.elvis.monitor.liveness</code></td><td class="role">monitor = health check</td></tr>
+<tr><td><code>ai.openclaw.gateway</code></td><td class="new"><code>ai.openclaw.gateway</code></td><td class="role">separate product — leave alone</td></tr>
+</table>
+
+<h2>3 · Scripts (~/bin) <span class="tag t-med">medium</span></h2>
+<p style="font-size:14px">Pattern: <code>&lt;channel&gt;-poller.py</code> for pollers; plain <code>&lt;function&gt;</code> otherwise. Drop the random <code>-watcher-</code> infix.</p>
+<table><tr><th>now</th><th>proposed</th></tr>
+<tr><td><code>gmail-watcher-poller.py</code></td><td class="new"><code>gmail-poller.py</code></td></tr>
+<tr><td><code>calendar-watcher-poller.py</code></td><td class="new"><code>calendar-poller.py</code></td></tr>
+<tr><td><code>carson-shortcuts-poller.py</code></td><td class="new"><code>shortcuts-poller.py</code></td></tr>
+<tr><td><code>photo-watcher-poller.py</code></td><td class="new"><code>photo-poller.py</code></td></tr>
+<tr><td><code>elvis-messages-poller.py</code></td><td class="new"><code>imessage-poller.py</code> <span class="role">(you → Elvis)</span></td></tr>
+<tr><td><code>carson-messages-poller.py</code></td><td class="new"><code>imessage-observe-poller.py</code> <span class="role">(Watcher observes all your texts — open to a better name)</span></td></tr>
+<tr><td><code>heartbeat-watcher-v2.py</code></td><td class="new"><code>heartbeat.py</code></td></tr>
+<tr><td><code>elvis-imessage.sh</code></td><td class="new"><code>imessage-send.sh</code></td></tr>
+<tr><td><code>carson-imessage.sh</code></td><td class="new"><code>imessage-as-carson.sh</code></td></tr>
+<tr><td><code>elvis-morning-brief-runner.sh</code></td><td class="new"><code>morning-brief.sh</code></td></tr>
+<tr><td><code>elvis-monitor.sh</code></td><td class="new"><code>event-monitor.sh</code></td></tr>
+<tr><td><code>elvis-messages-check.py</code></td><td class="new"><b>retire</b> <span class="role">(stale — the dead colonel plist pointed here)</span></td></tr>
+<tr><td><code>heartbeat-watcher.py</code></td><td class="new"><b>retire</b> <span class="role">(v1, dead)</span></td></tr>
+<tr><td colspan="2" class="role">keep (already clear): watcher-ping.sh · watcher-restart.sh · watcher-liveness.py · resolve-contact.sh · gemini-search.sh · elvis-db-snapshot.sh · elvis-status.sh · draft-handler.py</td></tr>
+</table>
+
+<h2>4 · Event tags <span class="tag t-risk">load-bearing</span></h2>
+<p style="font-size:14px">Tags are hardcoded in both the pollers <i>and</i> every monitor grep — a rename must change both atomically or a pipeline goes deaf. So I'd touch only the genuinely confusing ones and leave the rest.</p>
+<table><tr><th>now</th><th>proposed</th><th class="role">why</th></tr>
+<tr><td><code>[IMESSAGE]</code></td><td class="new"><code>[IMESSAGE]</code></td><td class="role">you → Elvis. fine as-is</td></tr>
+<tr><td><code>[CARSON_IMESSAGE]</code></td><td class="new"><code>[IMESSAGE_OBSERVE]</code></td><td class="role">the Watcher's broad feed — "carson" vs "imessage" was the confusing pair</td></tr>
+<tr><td colspan="3" class="role">leave clear ones unchanged: TELEGRAM · GMAIL · CALENDAR · SHORTCUT · PHOTO · BOOKMARK · INBOX · INTEL · HEARTBEAT · MORNING_TALK · WATCHER_PING</td></tr>
+</table>
+
+<h2>5 · Memory — DB buckets (the knowledge graph) <span class="tag t-risk">load-bearing</span></h2>
+<p style="font-size:14px">Renaming a bucket touches RLS, allowed_rooms, every row, and <code>full_boot()</code>. Most names are already role-clear or are intentional proper-nouns. Only one is genuinely opaque:</p>
+<table><tr><th>bucket</th><th>verdict</th></tr>
+<tr><td><code>vivere</code></td><td class="new"><code>life</code> &nbsp;<span class="role">— Latin "to live"; holds decisions/loops/tasks. Only opaque one. Rename if you want, but it's the highest-risk rename for the smallest gain.</span></td></tr>
+<tr><td><code>core</code></td><td class="role">→ optionally <code>carson</code> (it's your identity/faith/values). Or keep.</td></tr>
+<tr><td colspan="2" class="role">keep — already clear or intentional: <code>elvis</code> · <code>symbiosis</code> · <code>operations</code> · <code>epics</code> · <code>agoge</code> (your business) · <code>maimap</code> · <code>openclaw</code> · <code>mount_olympus</code></td></tr>
+</table>
+<p class="role" style="font-size:13px">My honest rec: leave buckets alone unless one truly bugs you. The risk/reward is bad — they're searchable, not user-facing, and a slip touches everything.</p>
+
+<h2>6 · The map's layers</h2>
+<p style="font-size:14px">Re-rendered to match the vocabulary above, so the picture and the names line up: <b>Channels → Pollers → Event Bus → Monitors → Instances → Memory → Actions</b> (+ William's lane).</p>
+
+<div class="q"><b>Your calls (where "makes sense" means makes sense to YOU):</b>
+<ul>
+<li><b>Instances:</b> keep <code>General Elvis</code>, or drop the rank → <code>Elvis</code>?</li>
+<li><b>The two iMessage scripts/tags:</b> is <code>imessage</code> + <code>imessage-observe</code> right, or do you want them named by who they feed (<code>elvis-</code> vs <code>watcher-</code>)?</li>
+<li><b>Buckets:</b> rename <code>vivere → life</code> and/or <code>core → carson</code>, or leave the DB alone?</li>
+<li><b>Flavor:</b> this is the plain technical vocab. Want it instead, or also, in a body metaphor — senses / nerve / attention / minds / memory / hands? (Evocative, but a layer.)</li>
+</ul>
+</div>
+
+<h2>Execution (once locked)</h2>
+<p style="font-size:14px">One clean pass, safest-first, verify each before the next: <b>(1)</b> retire dead scripts · <b>(2)</b> rename scripts via rename+symlink so no reference ever dangles · <b>(3)</b> relabel daemons (kills the last colonel labels), verify each reload · <b>(4)</b> the load-bearing tags last, changing poller + monitor together · <b>(5)</b> re-render + republish the map. Buckets only if you greenlight, done most carefully of all. Nothing batched; nothing left broken.</p>
+
+<div class="foot">Built by Elvis · June 1 2026 · this page is unlisted. Tweak anything and I run it in one shot.</div>
+</body>
+</html>
