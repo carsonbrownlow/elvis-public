@@ -39,10 +39,14 @@
 <h2>0 · Kill Colonel <span class="tag t-ok">safe</span></h2>
 <p style="font-size:14px">Colonel was the old inbox-classifier layer, <b>already retired 5/12</b>. The only live remnant is the name on 3 LaunchAgents — they get folded into the scheme below. The DB decision-records that <i>document</i> the retirement stay (that's history, not "colonel in use"). After the migration: zero <code>colonel</code> anywhere live.</p>
 
-<h2>1 · Instances (the brains)</h2>
-<table><tr><th>now</th><th>proposed</th><th class="role">role</th></tr>
-<tr><td><code>General Elvis</code></td><td class="new"><code>Elvis</code> <span class="role">(your call)</span></td><td class="role">The operator/agent. "General" is a sibling to the killed "Colonel" (military-rank lineage). Dropping it = just <b>Elvis</b>. ⚠️ touches boot identity (<code>full_boot('general')</code>) — only if you want it.</td></tr>
-<tr><td><code>The Watcher</code></td><td class="new"><code>The Watcher</code></td><td class="role">Keep — already says exactly what it does.</td></tr>
+<h2>1 · The fleet (instances) <span class="tag t-ok">LOCKED 6/1</span></h2>
+<p style="font-size:14px">One Elvis — the DB is the identity. Each member loads the DB and <i>becomes</i> Elvis; they differ only by vehicle + role. (<b>General stays</b> — your call 6/1.)</p>
+<table><tr><th>instance</th><th>vehicle</th><th class="role">role</th></tr>
+<tr><td><code>General</code></td><td>autonomous agent</td><td class="role">main agent — your comms + execution. always-on.</td></tr>
+<tr><td><code>The Watcher</code></td><td>autonomous agent</td><td class="role">always-on observer; sees all, acts on nothing.</td></tr>
+<tr><td><code>The Auditor</code></td><td>autonomous agent</td><td class="role">independent devil's-advocate on the big calls. <i>(coming)</i></td></tr>
+<tr><td><code>Workers</code></td><td>autonomous agent</td><td class="role">ephemeral; one spun up per task, gone when done.</td></tr>
+<tr><td><code>The Advisor</code></td><td>chat — Claude.ai / ChatGPT</td><td class="role">Elvis on a DB-connected chat product; becomes Elvis the moment you talk to it.</td></tr>
 </table>
 
 <h2>2 · Daemons (background services) <span class="tag t-med">medium</span></h2>
