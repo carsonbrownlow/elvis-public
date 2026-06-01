@@ -202,6 +202,13 @@ const elvis =star(0xffc785,0xc0531a,0xffb060,-13,'Elvis','The persona — your p
 // the spine: a beam of light running the full height, connecting purpose above to foundation below
 const beam=new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.42,372,20,1,true),new THREE.MeshBasicMaterial({color:0xffd9a0,transparent:true,opacity:0.085,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
 scene.add(beam);
+// energy flowing along the spine — foundation → core → source
+const FLOW_N=80, FLOW_Y0=-90, FLOW_Y1=94;
+const flowGeo=new THREE.BufferGeometry(), flowPos=new Float32Array(FLOW_N*3), flowSeed=new Float32Array(FLOW_N);
+for(let i=0;i<FLOW_N;i++){flowSeed[i]=Math.random();}
+flowGeo.setAttribute('position',new THREE.BufferAttribute(flowPos,3));
+const flow=new THREE.Points(flowGeo,new THREE.PointsMaterial({color:0xffe2b0,size:1.7,transparent:true,opacity:0.85,blending:THREE.AdditiveBlending,depthWrite:false}));
+scene.add(flow);
 
 // TOP — the source: the mission everything serves, light pouring in from above
 const SRC_Y=94;
@@ -217,7 +224,19 @@ const slab=lab('north star','star'); slab.position.set(0,9.5,0); source.add(slab
 // BOTTOM — the database: the foundation. "The DB is the identity."
 const DB_Y=-92, diskH=4.2, gap=1.7, dbRad=8.6;
 const dbGroup=new THREE.Object3D(); dbGroup.position.set(0,DB_Y,0); scene.add(dbGroup);
-const dbMat=new THREE.MeshStandardMaterial({color:0xffc279,emissive:0xff9d3c,emissiveIntensity:0.55,roughness:.26,metalness:.78,envMapIntensity:1.7});
+// database shader: a living data core — streaming rows, column lattice, glowing rim
+const DB_FRAG=`uniform float uTime;varying vec3 vPos;varying vec3 vN;varying vec3 vView;
+void main(){float ang=atan(vPos.z,vPos.x);
+ float cols=0.5+0.5*sin(ang*36.0);
+ float rw=fract(vPos.y*1.5-uTime*0.5);
+ float row=smoothstep(0.0,0.05,rw)*(1.0-smoothstep(0.09,0.22,rw));
+ vec3 gold=vec3(1.0,0.6,0.22);
+ float fres=pow(1.0-max(dot(normalize(vN),normalize(vView)),0.0),2.2);
+ vec3 col=gold*0.22+gold*row*0.95+gold*cols*0.10+gold*fres*1.05;
+ gl_FragColor=vec4(col,1.0);}`;
+const dbMat=new THREE.ShaderMaterial({uniforms:{uTime:{value:0}},
+  vertexShader:`varying vec3 vPos;varying vec3 vN;varying vec3 vView;void main(){vPos=position;vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.0);vView=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}`,
+  fragmentShader:DB_FRAG});
 for(let i=0;i<3;i++){
   const disk=new THREE.Mesh(new THREE.CylinderGeometry(dbRad,dbRad,diskH,48),dbMat); disk.position.y=i*(diskH+gap); dbGroup.add(disk);
   const cap=new THREE.Mesh(new THREE.TorusGeometry(dbRad,0.32,12,52),new THREE.MeshBasicMaterial({color:0xffe1a8,transparent:true,opacity:.8,blending:THREE.AdditiveBlending,depthWrite:false}));
@@ -260,13 +279,39 @@ busNode.position.set(0,0,28); scene.add(busNode); pickables.push(busNode);
 busNode.userData={card:{kind:'The spine',name:'Event Bus',role:'~/.workers/events.log — every pipeline appends one tagged line here, and both agents’ monitors tail it and react. The single nerve of the system.',color:'#ffcaa0',monitor:null,out:null,pipes:null}};
 const blab=lab('event bus'); blab.position.set(0,2.6,0); busNode.add(blab); blab.userData.el.classList.add('on');
 
+// ── planet shader: a lit world — surface + bands, lit by the binary at center, a glowing atmosphere rim ──
+const PLANET_VERT=`varying vec3 vPos;varying vec3 vN;varying vec3 vNW;varying vec3 vView;varying vec3 vWorld;
+void main(){vPos=position;vN=normalize(normalMatrix*normal);vNW=normalize(mat3(modelMatrix)*normal);vec4 mv=modelViewMatrix*vec4(position,1.0);vView=normalize(-mv.xyz);vWorld=(modelMatrix*vec4(position,1.0)).xyz;gl_Position=projectionMatrix*mv;}`;
+const PLANET_FRAG=SNOISE+`
+uniform float uTime;uniform vec3 uColor;uniform vec3 uAtmo;uniform float uDim;
+varying vec3 vPos;varying vec3 vN;varying vec3 vNW;varying vec3 vView;varying vec3 vWorld;
+void main(){vec3 p=normalize(vPos);
+ float n=fbm(p*2.4+vec3(uTime*0.02,0.0,0.0));
+ float bands=fbm(vec3(p.y*3.2,p.x*0.6+uTime*0.015,p.z*0.6));
+ vec3 base=mix(uColor*0.42,uColor,smoothstep(-0.45,0.6,n));
+ base=mix(base,uColor*1.3,smoothstep(0.25,0.78,bands)*0.55);
+ vec3 toLight=normalize(-vWorld);
+ float lam=clamp(dot(normalize(vNW),toLight),0.0,1.0);
+ float lit=0.2+0.95*lam;
+ float fres=pow(1.0-max(dot(normalize(vN),normalize(vView)),0.0),2.6);
+ vec3 col=base*lit+uAtmo*fres*1.1;
+ gl_FragColor=vec4(col*uDim,1.0);}`;
+const ATMO_VERT=`varying vec3 vN;varying vec3 vView;void main(){vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.0);vView=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}`;
+const ATMO_FRAG=`uniform vec3 uAtmo;uniform float uDim;varying vec3 vN;varying vec3 vView;
+void main(){float fres=pow(1.0-max(dot(normalize(vN),normalize(vView)),0.0),3.4);gl_FragColor=vec4(uAtmo*1.7*uDim,fres*uDim);}`;
+const planetMats=[];
+function makePlanetMat(color,atmo,dim){const m=new THREE.ShaderMaterial({uniforms:{uTime:{value:0},uColor:{value:new THREE.Color(color).convertSRGBToLinear()},uAtmo:{value:new THREE.Color(atmo).convertSRGBToLinear()},uDim:{value:dim}},vertexShader:PLANET_VERT,fragmentShader:PLANET_FRAG});planetMats.push(m);return m;}
+function makeAtmoMat(atmo,dim){return new THREE.ShaderMaterial({uniforms:{uAtmo:{value:new THREE.Color(atmo).convertSRGBToLinear()},uDim:{value:dim}},vertexShader:ATMO_VERT,fragmentShader:ATMO_FRAG,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.BackSide});}
+
 const planets=[];
 PLANETS.forEach((pl,pi)=>{
   const om=glowRing(pl.R,0xffc98a,true,pl.faint?0.07:0.11);
   const pivot=new THREE.Object3D(); pivot.rotation.y=[0.7,2.5,4.2,5.6][pi]; scene.add(pivot);
-  const mesh=new THREE.Mesh(new THREE.SphereGeometry(pl.size,44,44),
-    new THREE.MeshStandardMaterial({color:pl.color,emissive:pl.color,emissiveIntensity:pl.faint?0.35:0.55,roughness:.22,metalness:.65,envMapIntensity:1.4,transparent:!!pl.faint,opacity:pl.faint?0.6:1}));
+  const atmo=new THREE.Color(pl.color).lerp(new THREE.Color(0xffffff),0.5);
+  const dim=pl.faint?0.62:1.0;
+  const mesh=new THREE.Mesh(new THREE.SphereGeometry(pl.size,64,64),makePlanetMat(pl.color,atmo,dim));
   mesh.position.x=pl.R; pivot.add(mesh);
+  mesh.add(new THREE.Mesh(new THREE.SphereGeometry(pl.size*1.24,40,40),makeAtmoMat(atmo,dim)));
   mesh.userData={card:{kind:pl.kind,name:pl.name,role:pl.role,color:'#'+pl.color.toString(16),monitor:pl.monitor,out:pl.out,pipes:pl.pipes}}; pickables.push(mesh);
   const l=lab(pl.name); l.position.set(0,pl.size+2.4,0); mesh.add(l); l.userData.el.classList.add('on');
   planets.push({pl,pivot,mesh,om});
@@ -321,10 +366,20 @@ renderer.domElement.addEventListener('pointerup',e=>{
 
 const clock=new THREE.Clock();
 const STILL=location.search.indexOf('still')>=0; let frames=0;
+// intro: open close on the binary (the craft is the first thing you see), then pull back to the whole system
+const camStart=new THREE.Vector3(8,5,38), camEnd=camera.position.clone();
+let introT=STILL?1:0;
+if(!STILL){controls.autoRotate=false; camera.position.copy(camStart); camera.lookAt(0,0,0);}
 function animate(){
   const dt=Math.min(clock.getDelta(),0.05),t=clock.elapsedTime;
-  controls.update();
+  if(introT<1){introT=Math.min(1,introT+dt*0.20); const s=introT, e=s*s*s*(s*(s*6.0-15.0)+10.0); camera.position.lerpVectors(camStart,camEnd,e); camera.lookAt(0,0,0); if(introT>=1)controls.autoRotate=true;}
+  else controls.update();
   for(let i=0;i<starMats.length;i++) starMats[i].uniforms.uTime.value=t;
+  for(let i=0;i<planetMats.length;i++) planetMats[i].uniforms.uTime.value=t;
+  dbMat.uniforms.uTime.value=t;
+  busNode.scale.setScalar(1+0.14*Math.sin(t*2.1)); busNode.material.emissiveIntensity=0.8+0.5*Math.sin(t*2.1);
+  for(let i=0;i<FLOW_N;i++){const f=(flowSeed[i]+t*0.05)%1.0; flowPos[i*3]=Math.sin(f*18.8+flowSeed[i]*6.28)*0.7; flowPos[i*3+1]=FLOW_Y0+(FLOW_Y1-FLOW_Y0)*f; flowPos[i*3+2]=Math.cos(f*18.8+flowSeed[i]*6.28)*0.7;}
+  flowGeo.attributes.position.needsUpdate=true;
   heart.rotation.y+=dt*0.45;
   const b=1+0.04*Math.sin(t*1.3); carson.scale.setScalar(b); elvis.scale.setScalar(1+0.04*Math.sin(t*1.3+1.4));
   source.rotation.y+=dt*0.25; source.rotation.x+=dt*0.12; source.scale.setScalar(1+0.05*Math.sin(t*0.9));
