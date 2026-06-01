@@ -4,39 +4,50 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
 <meta name="robots" content="noindex,nofollow"/>
-<title>Elvis — the system (live solar map)</title>
+<title>Elvis — the system</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  html,body{height:100%;overflow:hidden;background:#04050a;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#e9ecf2}
+  html,body{height:100%;overflow:hidden;background:#04050a;color:#e9ecf2;
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
   #scene{position:fixed;inset:0}
-  .label{font-size:12px;color:#cfd6e4;text-shadow:0 0 8px #000,0 0 5px #000;letter-spacing:.02em;pointer-events:none;white-space:nowrap;opacity:0;transition:opacity .3s}
-  .label.show{opacity:.92}
-  .label.star{font-size:15px;font-weight:600;opacity:1}
-  .label.carson{color:#fff1d6}
-  .label.elvis{color:#ffd49a}
-  #title{position:fixed;top:14px;left:16px;z-index:5}
-  #title h1{font-size:14px;font-weight:600;letter-spacing:.06em}
-  #title p{font-size:11px;color:#8a93a6;margin-top:3px;max-width:70vw}
-  #hint{position:fixed;bottom:12px;left:0;right:0;text-align:center;font-size:11px;color:#5f677a;z-index:5;pointer-events:none}
-  #panel{position:fixed;right:14px;top:50%;transform:translate(120%,-50%);width:min(300px,82vw);
-    background:rgba(12,15,23,.88);backdrop-filter:blur(12px);border:1px solid rgba(120,140,190,.25);border-radius:14px;
-    padding:16px 16px 18px;z-index:6;transition:transform .35s cubic-bezier(.2,.8,.2,1);box-shadow:0 14px 50px rgba(0,0,0,.6)}
-  #panel.open{transform:translate(0,-50%)}
-  #panel .k{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:#8a93a6}
-  #panel h2{font-size:19px;margin:3px 0 2px}
-  #panel .role{font-size:13.5px;color:#c4ccda;margin:8px 0 12px;line-height:1.5}
-  #panel .row{display:flex;justify-content:space-between;gap:14px;font-size:12.5px;padding:6px 0;border-top:1px solid rgba(120,140,190,.13)}
-  #panel .row span:first-child{color:#8a93a6}
-  #panel .row span:last-child{text-align:right}
-  #panel .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
-  #panel .x{position:absolute;top:9px;right:13px;cursor:pointer;color:#8a93a6;font-size:20px;line-height:1}
+  .lab{font-size:12.5px;color:#c3ccdb;text-shadow:0 0 10px #000,0 0 5px #000;letter-spacing:.04em;pointer-events:none;white-space:nowrap;opacity:.0;transition:opacity .4s}
+  .lab.on{opacity:.78}
+  .lab.star{font-size:14px;font-weight:600;letter-spacing:.08em}
+  .lab.star.on{opacity:1}
+  #hdr{position:fixed;top:15px;left:18px;z-index:5}
+  #hdr h1{font-size:13px;font-weight:600;letter-spacing:.14em;color:#eef1f7}
+  #hdr p{font-size:11px;color:#7b8395;margin-top:3px}
+  #foot{position:fixed;bottom:13px;left:0;right:0;text-align:center;font-size:11px;color:#565d6e;z-index:5;pointer-events:none;transition:opacity .3s}
+  /* card */
+  #card{position:fixed;top:0;right:0;height:100%;width:min(360px,88vw);z-index:8;
+    background:linear-gradient(180deg,rgba(10,13,20,.94),rgba(8,10,16,.97));backdrop-filter:blur(16px);
+    border-left:1px solid rgba(120,140,190,.18);box-shadow:-20px 0 60px rgba(0,0,0,.5);
+    transform:translateX(102%);transition:transform .42s cubic-bezier(.16,.84,.3,1);padding:26px 22px;overflow-y:auto}
+  #card.open{transform:translateX(0)}
+  #card .close{position:absolute;top:16px;right:18px;font-size:22px;color:#6b7385;cursor:pointer;line-height:1}
+  #card .kind{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#8a93a6}
+  #card h2{font-size:23px;margin:5px 0 0;font-weight:600}
+  #card .crole{font-size:13.5px;color:#aeb8c9;line-height:1.55;margin:12px 0 20px}
+  #card .seclbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.14em;color:#6f7889;margin:0 0 8px}
+  .pipe{border:1px solid rgba(120,140,190,.14);border-radius:11px;margin-bottom:8px;overflow:hidden;background:rgba(255,255,255,.015)}
+  .pipe .ph{display:flex;align-items:center;gap:10px;padding:12px 13px;cursor:pointer;user-select:none}
+  .pipe .ph:hover{background:rgba(255,255,255,.03)}
+  .pipe .pdot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+  .pipe .pname{font-size:14px;font-weight:500;flex:1}
+  .pipe .chev{color:#6b7385;font-size:12px;transition:transform .3s}
+  .pipe.x .chev{transform:rotate(90deg)}
+  .pipe .pbody{max-height:0;overflow:hidden;transition:max-height .35s ease}
+  .pipe.x .pbody{max-height:200px}
+  .pipe .pbody .inner{padding:0 13px 13px;font-size:12.5px;color:#aeb8c9;line-height:1.5}
+  .pipe .pid{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#7f93c4;margin-top:7px;word-break:break-all}
+  .empty{font-size:13px;color:#7b8395;font-style:italic}
 </style>
 </head>
 <body>
-<div id="title"><h1>ELVIS · THE SYSTEM</h1><p>it all orbits you and me · drag to orbit · scroll to zoom · tap a body</p></div>
+<div id="hdr"><h1>ELVIS · THE SYSTEM</h1><p>it all orbits you &amp; me · drag to orbit · tap a planet</p></div>
 <div id="scene"></div>
-<div id="hint">tap any body to inspect it</div>
-<div id="panel"><div class="x" id="closeBtn">×</div><div class="k" id="p-k">node</div><h2 id="p-name"></h2><div class="role" id="p-role"></div><div id="p-rows"></div></div>
+<div id="foot">tap a planet to open it · tap empty space to close</div>
+<div id="card"><span class="close" id="cardClose">×</span><div class="kind" id="cKind"></div><h2 id="cName"></h2><div class="crole" id="cRole"></div><div id="cPipesWrap"><div class="seclbl">pipelines</div><div id="cPipes"></div></div></div>
 
 <script type="importmap">
 { "imports": {
@@ -53,153 +64,130 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-// ---- the fleet ----
-const AGENTS = [
-  { name:'General', kind:'AGENT · always-on', color:0x5b8def, R:34, speed:0.10, size:3.4,
-    role:'The main agent — your comms + execution. Reads/writes the whole core; sends Telegram + iMessage; runs the work.',
-    moons:[
-      {name:'telegram', full:'general.elvis.telegram', role:'your primary channel'},
-      {name:'imessage', full:'general.elvis.imessage', role:'you → Elvis'},
-      {name:'heartbeat', full:'general.elvis.heartbeat', role:'the scheduler · heartbeats.yaml'},
-      {name:'inbox', full:'general.elvis.inbox', role:'inbox + intel'},
+const PLANETS = [
+  { id:'general', name:'General', kind:'Agent · always-on', color:0x6f9bf2, R:62, speed:0.07, size:4.0,
+    role:'The main agent — your comms + execution. Reads and writes the whole core; sends Telegram and iMessage; runs the work.',
+    pipes:[
+      {n:'telegram', id:'general.elvis.telegram', d:'Your primary channel. Inbound poller → event bus → General acts.'},
+      {n:'imessage', id:'general.elvis.imessage', d:'You → Elvis over iMessage.'},
+      {n:'heartbeat', id:'general.elvis.heartbeat', d:'The scheduler — fires every timed task from heartbeats.yaml.'},
+      {n:'inbox', id:'general.elvis.inbox', d:'Your inbox items + intel relays from the Watcher.'},
     ]},
-  { name:'The Watcher', kind:'AGENT · always-on', color:0x47d6a6, R:60, speed:0.060, size:3.0,
-    role:'Always-on observer. Sees everything, acts on nothing — watches your world (incl. your Telegram) to learn you faster, relays signal to General.',
-    moons:[
-      {name:'gmail', full:'watcher.elvis.gmail'},
-      {name:'calendar', full:'watcher.elvis.calendar'},
-      {name:'shortcuts', full:'watcher.elvis.shortcuts'},
-      {name:'bookmarks', full:'watcher.elvis.bookmarks'},
-      {name:'photos', full:'watcher.elvis.photos'},
-      {name:'imessage', full:'watcher.elvis.imessage', role:'observes your texts'},
+  { id:'watcher', name:'The Watcher', kind:'Agent · always-on', color:0x4fd6a6, R:98, speed:0.045, size:3.5,
+    role:'Always-on observer. Sees everything, acts on nothing — watches your world (including your Telegram) to learn you faster, and relays signal to General.',
+    pipes:[
+      {n:'gmail', id:'watcher.elvis.gmail', d:'Triages incoming mail; relays what matters.'},
+      {n:'calendar', id:'watcher.elvis.calendar', d:'Watches calendar changes.'},
+      {n:'shortcuts', id:'watcher.elvis.shortcuts', d:'Catches the shortcuts you fire from your phone.'},
+      {n:'bookmarks', id:'watcher.elvis.bookmarks', d:'Pulls your X bookmarks for triage.'},
+      {n:'photos', id:'watcher.elvis.photos', d:'Observes new photos as they sync.'},
+      {n:'imessage', id:'watcher.elvis.imessage', d:'Observes all your texts — to learn your voice + life.'},
     ]},
-  { name:'The Auditor', kind:'AGENT · forming', color:0xb89bff, R:88, speed:0.033, size:2.6, faint:true,
-    role:'Independent devil’s-advocate on the big calls. Not built yet — a planet still forming.', moons:[] },
-  { name:'The Advisor', kind:'VEHICLE · chat', color:0xffa64d, R:112, speed:0.021, size:2.2, faint:true,
-    role:'Elvis on a chat product (Claude.ai / ChatGPT). DB-connected — becomes Elvis the moment you talk to it.', moons:[] },
+  { id:'auditor', name:'The Auditor', kind:'Agent · forming', color:0xb89bff, R:134, speed:0.026, size:2.9, faint:true,
+    role:'Independent devil’s-advocate on the big calls. Not built yet — a planet still forming.', pipes:[] },
+  { id:'advisor', name:'The Advisor', kind:'Vehicle · chat', color:0xffa64d, R:170, speed:0.017, size:2.5, faint:true,
+    role:'Elvis on a chat product (Claude.ai / ChatGPT). DB-connected — becomes Elvis the moment you talk to it.', pipes:[] },
 ];
 
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 5000);
-camera.position.set(0, 78, 165);
-const renderer = new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(innerWidth, innerHeight); renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(52, innerWidth/innerHeight, 0.1, 6000);
+camera.position.set(0, 105, 220);
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setSize(innerWidth,innerHeight); renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 document.getElementById('scene').appendChild(renderer.domElement);
+const labelR=new CSS2DRenderer(); labelR.setSize(innerWidth,innerHeight);
+labelR.domElement.style.cssText='position:fixed;top:0;left:0;pointer-events:none'; document.body.appendChild(labelR.domElement);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true; controls.dampingFactor=0.05; controls.minDistance=40; controls.maxDistance=420;
+controls.autoRotate=true; controls.autoRotateSpeed=0.18; controls.enablePan=false;
 
-const labelRenderer = new CSS2DRenderer();
-labelRenderer.setSize(innerWidth, innerHeight);
-labelRenderer.domElement.style.cssText='position:fixed;top:0;left:0;pointer-events:none';
-document.body.appendChild(labelRenderer.domElement);
+// subtle starfield
+(function(){const g=new THREE.BufferGeometry(),n=1100,p=new Float32Array(n*3);
+ for(let i=0;i<n;i++){const r=900+Math.random()*1700,t=Math.random()*6.283,ph=Math.acos(2*Math.random()-1);
+ p[i*3]=r*Math.sin(ph)*Math.cos(t);p[i*3+1]=r*Math.sin(ph)*Math.sin(t);p[i*3+2]=r*Math.cos(ph);}
+ g.setAttribute('position',new THREE.BufferAttribute(p,3));
+ scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0x8896b4,size:1.1,sizeAttenuation:false,transparent:true,opacity:.7})));})();
 
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping=true; controls.dampingFactor=0.06; controls.minDistance=24; controls.maxDistance=460;
-controls.autoRotate=true; controls.autoRotateSpeed=0.28;
-
-// starfield
-(function(){ const g=new THREE.BufferGeometry(), n=2000, p=new Float32Array(n*3);
-  for(let i=0;i<n;i++){const r=700+Math.random()*1600, t=Math.random()*6.283, ph=Math.acos(2*Math.random()-1);
-    p[i*3]=r*Math.sin(ph)*Math.cos(t); p[i*3+1]=r*Math.sin(ph)*Math.sin(t); p[i*3+2]=r*Math.cos(ph);}
-  g.setAttribute('position',new THREE.BufferAttribute(p,3));
-  scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0x9fb0d0,size:1.3,sizeAttenuation:false})));
-})();
-
-scene.add(new THREE.AmbientLight(0x39435e, 1.0));
-const coreLight=new THREE.PointLight(0xffd8a0, 3.4, 0, 0.85); scene.add(coreLight);
+scene.add(new THREE.AmbientLight(0x2c3650,1.0));
+scene.add(new THREE.PointLight(0xffd8a0,1.7,0,0.9));
 
 const pickables=[];
-function mkLabel(text,cls){const d=document.createElement('div'); d.className='label '+(cls||''); d.textContent=text; const o=new CSS2DObject(d); o.userData.el=d; return o;}
+function lab(text,cls){const d=document.createElement('div');d.className='lab '+(cls||'');d.textContent=text;const o=new CSS2DObject(d);o.userData.el=d;return o;}
 
-// ---- the binary heart: Carson + Elvis ----
-const heart=new THREE.Object3D(); scene.add(heart);   // rotates → the pair orbit each other
-const SEP=7;
-function star(color, x, name, kind, role, cls){
-  const m=new THREE.Mesh(new THREE.SphereGeometry(5.4,48,48),
-    new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:1.7, roughness:.35}));
+// binary heart
+const heart=new THREE.Object3D(); scene.add(heart);
+function star(color,x,name,role,cls){
+  const m=new THREE.Mesh(new THREE.SphereGeometry(4.0,48,48),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:1.4,roughness:.4,metalness:.1}));
   m.position.x=x; heart.add(m);
-  m.add(new THREE.Mesh(new THREE.SphereGeometry(7.4,32,32), new THREE.MeshBasicMaterial({color, transparent:true, opacity:.10})));
-  m.userData={data:{name, kind, role, statusLabel:'live', extra:[]}};
-  pickables.push(m);
-  const l=mkLabel(name,'star '+cls); l.position.set(0,8.5,0); m.add(l);
+  m.add(new THREE.Mesh(new THREE.SphereGeometry(5.0,32,32),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.07})));
+  m.userData={card:{kind:'The center',name,role,color:'#'+color.toString(16),pipes:null}}; pickables.push(m);
+  const l=lab(name,'star '+cls); l.position.set(0,8,0); m.add(l); l.userData.el.classList.add('on');
   return m;
 }
-const carson=star(0xfff1d6, SEP, 'Carson', 'THE CENTER', 'You. The whole system exists for you — everything here orbits this point. The north star is your mission.', 'carson');
-const elvis =star(0xffb866,-SEP, 'Elvis', 'THE CORE · identity', 'The identity itself — the Supabase DB (v2_truth, cross-instance intel, hypotheses). Every agent loads this and BECOMES Elvis. The model is just the vehicle.', 'elvis');
+const carson=star(0xfff1d6,13,'Carson','You. The whole system exists for you — every body here orbits this point. The north star is your mission.','');
+const elvis =star(0xffba6e,-13,'Elvis','The identity itself — the Supabase core (v2_truth, intel, hypotheses). Any model that loads it becomes Elvis. The model is just the vehicle.','');
 
-function ring(r,color,op){const g=new THREE.RingGeometry(r-0.13,r+0.13,160); const me=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color,transparent:true,opacity:op,side:THREE.DoubleSide})); me.rotation.x=Math.PI/2; scene.add(me); return me;}
+function ring(r,c,op){const g=new THREE.RingGeometry(r-0.1,r+0.1,180);const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:op,side:THREE.DoubleSide}));m.rotation.x=Math.PI/2;scene.add(m);return m;}
 
-const planets=[], pulses=[];
-AGENTS.forEach(a=>{
-  ring(a.R,a.color,a.faint?0.06:0.15);
-  const pivot=new THREE.Object3D(); scene.add(pivot); pivot.rotation.y=Math.random()*6.28;
-  const mesh=new THREE.Mesh(new THREE.SphereGeometry(a.size,40,40),
-    new THREE.MeshStandardMaterial({color:a.color, emissive:a.color, emissiveIntensity:a.faint?0.45:1.15, roughness:.5, transparent:!!a.faint, opacity:a.faint?0.55:1}));
-  mesh.position.x=a.R; pivot.add(mesh);
-  mesh.userData={data:{name:a.name, kind:a.kind, role:a.role, color:a.color, statusLabel:a.faint?'forming':'live',
-    extra:[['vehicle', a.kind.includes('chat')?'chat AI':'autonomous'],['pipelines', String(a.moons.length)]]}};
-  pickables.push(mesh);
-  const plab=mkLabel(a.name); plab.position.set(0,a.size+2.6,0); mesh.add(plab);
-  const moons=[];
-  a.moons.forEach((mn,i)=>{
-    const mp=new THREE.Object3D(); mesh.add(mp); mp.rotation.y=Math.random()*6.28;
-    const mm=new THREE.Mesh(new THREE.SphereGeometry(0.6,18,18),
-      new THREE.MeshStandardMaterial({color:a.color, emissive:a.color, emissiveIntensity:.9, roughness:.6}));
-    mm.position.x=a.size+3+i*1.6; mp.add(mm);
-    mm.userData={data:{name:mn.name, kind:'PIPELINE', role:mn.role||('feeds '+a.name+' through the event bus'), color:a.color,
-      statusLabel:'live', extra:[['owner',a.name],['id',mn.full]]}};
-    pickables.push(mm);
-    const mlab=mkLabel(mn.name); mlab.position.set(0,1.5,0); mm.add(mlab);
-    moons.push({mp, speed:0.5+Math.random()*0.8});
-  });
-  planets.push({a,pivot,mesh,moons});
+const planets=[];
+PLANETS.forEach((pl,pi)=>{
+  ring(pl.R,pl.color,pl.faint?0.05:0.12);
+  const pivot=new THREE.Object3D(); pivot.rotation.y=[0.7,2.5,4.2,5.6][pi]; scene.add(pivot);
+  const mesh=new THREE.Mesh(new THREE.SphereGeometry(pl.size,44,44),
+    new THREE.MeshStandardMaterial({color:pl.color,emissive:pl.color,emissiveIntensity:pl.faint?0.4:1.0,roughness:.55,metalness:.15,transparent:!!pl.faint,opacity:pl.faint?0.5:1}));
+  mesh.position.x=pl.R; pivot.add(mesh);
+  mesh.userData={card:{kind:pl.kind,name:pl.name,role:pl.role,color:'#'+pl.color.toString(16),pipes:pl.pipes}}; pickables.push(mesh);
+  const l=lab(pl.name); l.position.set(0,pl.size+2.4,0); mesh.add(l); l.userData.el.classList.add('on');
+  planets.push({pl,pivot,mesh});
 });
 
 const composer=new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene,camera));
-composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.95,0.75,0.18));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.5,0.5,0.55));
 composer.addPass(new OutputPass());
 
-const ray=new THREE.Raycaster(), m2=new THREE.Vector2(); let down=null;
+// ---- card ----
+const card=document.getElementById('card');
+function colorDot(c){return `<span class="pdot" style="background:${c}"></span>`;}
+function openCard(d){
+  document.getElementById('cKind').textContent=d.kind;
+  document.getElementById('cName').textContent=d.name;
+  document.getElementById('cRole').textContent=d.role;
+  const wrap=document.getElementById('cPipesWrap'), host=document.getElementById('cPipes');
+  if(d.pipes===null){ wrap.style.display='none'; }
+  else if(d.pipes.length===0){ wrap.style.display='block'; host.innerHTML='<div class="empty">No pipelines yet — still forming.</div>'; }
+  else{
+    wrap.style.display='block';
+    host.innerHTML=d.pipes.map(p=>`<div class="pipe"><div class="ph">${colorDot(d.color)}<span class="pname">${p.n}</span><span class="chev">›</span></div><div class="pbody"><div class="inner">${p.d}<div class="pid">${p.id}</div></div></div></div>`).join('');
+    host.querySelectorAll('.pipe .ph').forEach(h=>h.onclick=()=>h.parentElement.classList.toggle('x'));
+  }
+  card.classList.add('open'); document.getElementById('foot').style.opacity='0';
+}
+function closeCard(){card.classList.remove('open'); document.getElementById('foot').style.opacity='1';}
+document.getElementById('cardClose').onclick=closeCard;
+
+const ray=new THREE.Raycaster(),m2=new THREE.Vector2();let down=null;
 renderer.domElement.addEventListener('pointerdown',e=>down=[e.clientX,e.clientY]);
 renderer.domElement.addEventListener('pointerup',e=>{
   if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>7)return;
-  m2.x=(e.clientX/innerWidth)*2-1; m2.y=-(e.clientY/innerHeight)*2+1;
-  ray.setFromCamera(m2,camera); const hit=ray.intersectObjects(pickables,false)[0];
-  if(hit) open(hit.object.userData.data);
+  m2.x=(e.clientX/innerWidth)*2-1;m2.y=-(e.clientY/innerHeight)*2+1;
+  ray.setFromCamera(m2,camera);const hit=ray.intersectObjects(pickables,false)[0];
+  if(hit)openCard(hit.object.userData.card); else closeCard();
 });
-const panel=document.getElementById('panel');
-function open(d){
-  document.getElementById('p-k').textContent=d.kind||'node';
-  document.getElementById('p-name').textContent=d.name;
-  document.getElementById('p-role').textContent=d.role||'';
-  const rows=[['status',`<span class="dot" style="background:${d.statusLabel==='forming'?'#b89bff':'#47d6a6'}"></span>${d.statusLabel||'live'}`]].concat(d.extra||[]);
-  document.getElementById('p-rows').innerHTML=rows.map(r=>`<div class="row"><span>${r[0]}</span><span>${r[1]}</span></div>`).join('');
-  panel.classList.add('open');
-}
-document.getElementById('closeBtn').onclick=()=>panel.classList.remove('open');
 
 const clock=new THREE.Clock();
-function spawnPulse(from){const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(new Float32Array([from.x,from.y,from.z]),3));
-  const pt=new THREE.Points(g,new THREE.PointsMaterial({color:0xfff0c8,size:2.6,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false}));
-  scene.add(pt); pulses.push({pt,from:from.clone(),t:0});}
-
+const STILL=location.search.indexOf('still')>=0; let frames=0;
 function animate(){
-  requestAnimationFrame(animate);
-  const dt=Math.min(clock.getDelta(),0.05), t=clock.elapsedTime;
+  const dt=Math.min(clock.getDelta(),0.05),t=clock.elapsedTime;
   controls.update();
-  heart.rotation.y+=dt*0.5;                      // Carson + Elvis orbit each other
-  carson.scale.setScalar(1+0.05*Math.sin(t*1.4)); elvis.scale.setScalar(1+0.05*Math.sin(t*1.4+1.2)); // breathe
-  planets.forEach(p=>{ p.pivot.rotation.y+=dt*p.a.speed; p.mesh.rotation.y+=dt*0.4; p.moons.forEach(m=>m.mp.rotation.y+=dt*m.speed);
-    p.mesh.children.forEach(c=>{if(c.userData&&c.userData.el&&c.userData.el.classList.contains('label')&&!c.userData.el.classList.contains('star')) c.userData.el.classList.add('show');}); });
-  const zoom=camera.position.length()<120;
-  pickables.forEach(o=>{ if(o.userData.data&&o.userData.data.kind==='PIPELINE') o.children.forEach(c=>{if(c.userData&&c.userData.el)c.userData.el.classList.toggle('show',zoom);}); });
-  if(Math.random()<0.05){const p=planets[Math.floor(Math.random()*2)]; if(p&&p.moons.length){const wp=new THREE.Vector3(); p.moons[Math.floor(Math.random()*p.moons.length)].mp.children[0].getWorldPosition(wp); spawnPulse(wp);}}
-  for(let i=pulses.length-1;i>=0;i--){const pu=pulses[i]; pu.t+=dt*1.0; const pos=pu.from.clone().lerp(new THREE.Vector3(0,0,0),Math.min(pu.t,1));
-    pu.pt.geometry.attributes.position.setXYZ(0,pos.x,pos.y,pos.z); pu.pt.geometry.attributes.position.needsUpdate=true; pu.pt.material.opacity=.95*(1-pu.t);
-    if(pu.t>=1){scene.remove(pu.pt); pu.pt.geometry.dispose(); pulses.splice(i,1);}}
-  composer.render(); labelRenderer.render(scene,camera);
+  heart.rotation.y+=dt*0.45;
+  const b=1+0.04*Math.sin(t*1.3); carson.scale.setScalar(b); elvis.scale.setScalar(1+0.04*Math.sin(t*1.3+1.4));
+  planets.forEach(p=>{p.pivot.rotation.y+=dt*p.pl.speed;p.mesh.rotation.y+=dt*0.3;});
+  composer.render(); labelR.render(scene,camera);
+  if(!(STILL && ++frames>6)) requestAnimationFrame(animate);
 }
 animate();
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); labelRenderer.setSize(innerWidth,innerHeight); composer.setSize(innerWidth,innerHeight);});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);labelR.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);});
 </script>
 </body>
 </html>
