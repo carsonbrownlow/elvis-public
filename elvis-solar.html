@@ -11,8 +11,8 @@
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",system-ui,sans-serif;-webkit-font-smoothing:antialiased;letter-spacing:.01em}
   #scene{position:fixed;inset:0}
   #grain{position:fixed;inset:0;z-index:7;pointer-events:none;opacity:.05;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-  .lab{font-size:11.5px;font-weight:450;color:#cdd5e2;text-shadow:0 0 12px #000,0 0 6px #000;letter-spacing:.07em;pointer-events:none;white-space:nowrap;opacity:0;transition:opacity .5s}
-  .lab.on{opacity:.66}
+  .lab{font-size:11.5px;font-weight:450;color:#dbe2ee;text-shadow:0 1px 2px rgba(0,0,0,.92),0 0 1px rgba(0,0,0,.95);letter-spacing:.07em;pointer-events:none;white-space:nowrap;opacity:0;transition:opacity .5s}
+  .lab.on{opacity:.8}
   .lab.star{font-size:13px;font-weight:500;letter-spacing:.14em}
   .lab.star.on{opacity:.95}
   #hdr{position:fixed;top:15px;left:18px;z-index:5}
@@ -21,8 +21,8 @@
   #foot{position:fixed;bottom:13px;left:0;right:0;text-align:center;font-size:11px;color:#565d6e;z-index:5;pointer-events:none;transition:opacity .3s}
   /* card */
   #card{position:fixed;top:0;right:0;height:100%;width:min(372px,90vw);z-index:8;
-    background:linear-gradient(155deg,rgba(24,28,40,.72),rgba(10,12,20,.84));backdrop-filter:blur(40px) saturate(1.6);-webkit-backdrop-filter:blur(40px) saturate(1.6);
-    border-left:1px solid rgba(150,170,220,.16);box-shadow:-34px 0 90px rgba(0,0,0,.55),inset 1px 0 0 rgba(255,255,255,.07);
+    background:linear-gradient(150deg,rgba(38,44,64,.44),rgba(13,16,27,.58));backdrop-filter:blur(60px) saturate(1.9);-webkit-backdrop-filter:blur(60px) saturate(1.9);
+    border-left:1px solid rgba(160,180,230,.22);box-shadow:-40px 0 100px rgba(0,0,0,.5),inset 1px 0 0 rgba(255,255,255,.12),inset 0 1px 0 rgba(255,255,255,.06);
     transform:translateX(102%);transition:transform .5s cubic-bezier(.16,.84,.24,1);padding:30px 24px;overflow-y:auto}
   #card.open{transform:translateX(0)}
   #card .close{position:absolute;top:16px;right:18px;font-size:22px;color:#6b7385;cursor:pointer;line-height:1}
@@ -201,48 +201,64 @@ const carson=star(0xffe3a0,0xd07c22,0xffe7c0,13,'Carson','You. The whole system 
 const elvis =star(0xffc785,0xc0531a,0xffb060,-13,'Elvis','The persona — your partner at the heart of it all. But what makes Elvis *Elvis* doesn’t live in the model; it lives in the database at the foot of this axis. The model is just the vehicle.','');
 
 // ───────── THE VERTICAL AXIS — source (top) · the binary (center) · the database (foundation) ─────────
-// the spine: a beam of light running the full height, connecting purpose above to foundation below
-const beam=new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.42,372,20,1,true),new THREE.MeshBasicMaterial({color:0xffd9a0,transparent:true,opacity:0.085,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
-scene.add(beam);
+// the spine: light pouring DOWN from heaven (the North Star) through the binary into the foundation
+const beamMats=[];
+function makeBeam(radius,op){
+  const m=new THREE.ShaderMaterial({transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,
+    uniforms:{uTime:{value:0},uColor:{value:new THREE.Color(0xffe9c4).convertSRGBToLinear()},uOp:{value:op}},
+    vertexShader:`varying float vY;void main(){vY=position.y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+    fragmentShader:`uniform float uTime;uniform vec3 uColor;uniform float uOp;varying float vY;
+      void main(){float top=smoothstep(-186.0,200.0,vY);float grad=mix(0.22,1.0,top);float flick=0.93+0.07*sin(uTime*1.5+vY*0.07);gl_FragColor=vec4(uColor*grad*flick,uOp*grad);}`});
+  beamMats.push(m); scene.add(new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,372,28,1,true),m));
+}
+makeBeam(0.5,0.18); makeBeam(1.7,0.06); makeBeam(3.4,0.028);
 // energy flowing along the spine — foundation → core → source
-const FLOW_N=80, FLOW_Y0=-90, FLOW_Y1=94;
-const flowGeo=new THREE.BufferGeometry(), flowPos=new Float32Array(FLOW_N*3), flowSeed=new Float32Array(FLOW_N);
+const FLOW_N=80, FLOW_Y0=-90, FLOW_Y1=104;
+const flowGeo=new THREE.BufferGeometry(), flowPos=new Float32Array(FLOW_N*3), flowCol=new Float32Array(FLOW_N*3), flowSeed=new Float32Array(FLOW_N);
 for(let i=0;i<FLOW_N;i++){flowSeed[i]=Math.random();}
 flowGeo.setAttribute('position',new THREE.BufferAttribute(flowPos,3));
-const flow=new THREE.Points(flowGeo,new THREE.PointsMaterial({color:0xffe2b0,size:2.4,map:ROUND,transparent:true,opacity:0.9,blending:THREE.AdditiveBlending,depthWrite:false}));
+flowGeo.setAttribute('color',new THREE.BufferAttribute(flowCol,3));
+const flow=new THREE.Points(flowGeo,new THREE.PointsMaterial({color:0xffe2b0,size:2.4,map:ROUND,vertexColors:true,transparent:true,opacity:0.9,blending:THREE.AdditiveBlending,depthWrite:false}));
 scene.add(flow);
 
-// TOP — the source: the mission everything serves, light pouring in from above
-const SRC_Y=94;
-const source=new THREE.Mesh(new THREE.SphereGeometry(4.8,72,72),makeStarMat(0xfff6e4,0xe8a23e,3.0,1.25));
+// TOP — HEAVEN: the radiant source. Trust, power, and revelation pour DOWN from here.
+const SRC_Y=104;
+const source=new THREE.Mesh(new THREE.SphereGeometry(5.0,72,72),makeStarMat(0xfffaf0,0xffe8c4,1.7,1.4));
 source.position.set(0,SRC_Y,0); scene.add(source); pickables.push(source);
-source.add(new THREE.Mesh(new THREE.SphereGeometry(9.2,40,40),new THREE.MeshBasicMaterial({color:0xffe6b0,transparent:true,opacity:.12,blending:THREE.AdditiveBlending,depthWrite:false})));
-const srcLight=new THREE.PointLight(0xffe8bc,1.3,320,1.4); srcLight.position.set(0,SRC_Y,0); scene.add(srcLight);
-// soft cloud cradle around the source — it sits in light, like the reference
-(function(){const cv=document.createElement('canvas');cv.width=cv.height=256;const x=cv.getContext('2d');const gr=x.createRadialGradient(128,128,8,128,128,128);gr.addColorStop(0,'rgba(255,228,184,0.5)');gr.addColorStop(0.5,'rgba(214,176,150,0.12)');gr.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=gr;x.fillRect(0,0,256,256);const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,opacity:0.6,blending:THREE.AdditiveBlending,depthWrite:false}));sp.position.set(0,SRC_Y,-3);sp.scale.setScalar(76);scene.add(sp);})();
-source.userData={card:{kind:'The source · above',name:'North Star',role:'The mission everything serves — your purpose, pouring down through the whole system. Every body here orbits because of what sits at the top of this axis.',color:'#ffe6b0',monitor:null,out:null,pipes:null}};
-const slab=lab('north star','star'); slab.position.set(0,9.5,0); source.add(slab); slab.userData.el.classList.add('on');
+// radiant aura — concentric shells of light, the glow of heaven
+[[8,0.22],[12,0.12],[17,0.06],[24,0.03]].forEach(s=>source.add(new THREE.Mesh(new THREE.SphereGeometry(s[0],40,40),new THREE.MeshBasicMaterial({color:0xfff0d4,transparent:true,opacity:s[1],blending:THREE.AdditiveBlending,depthWrite:false}))));
+const srcLight=new THREE.PointLight(0xfff0d0,1.7,380,1.3); srcLight.position.set(0,SRC_Y,0); scene.add(srcLight);
+// light cascading DOWNWARD onto the system — revelation pouring in (a soft widening cone, apex at the source)
+const cone=new THREE.Mesh(new THREE.ConeGeometry(48,156,44,1,true),new THREE.MeshBasicMaterial({color:0xffeccb,transparent:true,opacity:0.045,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+cone.position.set(0,SRC_Y-78,0); scene.add(cone);
+// soft cloud cradle (heaven)
+(function(){const cv=document.createElement('canvas');cv.width=cv.height=256;const x=cv.getContext('2d');const gr=x.createRadialGradient(128,128,8,128,128,128);gr.addColorStop(0,'rgba(255,242,216,0.55)');gr.addColorStop(0.5,'rgba(222,206,186,0.12)');gr.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=gr;x.fillRect(0,0,256,256);const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,opacity:0.62,blending:THREE.AdditiveBlending,depthWrite:false}));sp.position.set(0,SRC_Y,-3);sp.scale.setScalar(94);scene.add(sp);})();
+source.userData={card:{kind:'The apex · above',name:'North Star',role:'A symbol of heaven — where trust, power, and revelation come from. The light the whole system serves and draws from, pouring down the axis into the binary and the foundation below.',color:'#fff0d4',monitor:null,out:null,pipes:null}};
+const slab=lab('north star','star'); slab.position.set(0,10.5,0); source.add(slab); slab.userData.el.classList.add('on');
 
 // BOTTOM — the database: the foundation. "The DB is the identity."
-const DB_Y=-92, diskH=4.2, gap=1.7, dbRad=8.6;
+const DB_Y=-92, diskH=2.7, gap=1.3, dbRad=9.0, DB_DISKS=5;
 const dbGroup=new THREE.Object3D(); dbGroup.position.set(0,DB_Y,0); scene.add(dbGroup);
-// database shader: a living data core — streaming rows, column lattice, glowing rim
-const DB_FRAG=`uniform float uTime;varying vec3 vPos;varying vec3 vN;varying vec3 vView;
+// database shader: a living data core — streaming rows, column lattice, a read-head sweeping the whole stack, glowing rim
+const DB_FRAG=`uniform float uTime;uniform float uScanY;varying vec3 vPos;varying vec3 vN;varying vec3 vView;varying float vWY;
 void main(){float ang=atan(vPos.z,vPos.x);
- float cols=0.5+0.5*sin(ang*36.0);
- float rw=fract(vPos.y*1.5-uTime*0.5);
- float row=smoothstep(0.0,0.05,rw)*(1.0-smoothstep(0.09,0.22,rw));
+ float cols=0.5+0.5*sin(ang*40.0);
+ float rw=fract(vPos.y*2.4-uTime*0.5);
+ float row=smoothstep(0.0,0.045,rw)*(1.0-smoothstep(0.08,0.2,rw));
  vec3 gold=vec3(1.0,0.6,0.22);
- float fres=pow(1.0-max(dot(normalize(vN),normalize(vView)),0.0),2.2);
- vec3 col=gold*0.22+gold*row*0.95+gold*cols*0.10+gold*fres*1.05;
+ float fres=pow(1.0-max(dot(normalize(vN),normalize(vView)),0.0),2.3);
+ float scan=exp(-pow((vWY-uScanY)*0.55,2.0));
+ vec3 col=gold*0.2+gold*row*0.85+gold*cols*0.08+gold*fres*1.05+vec3(1.0,0.86,0.58)*scan*1.1;
  gl_FragColor=vec4(col,1.0);}`;
-const dbMat=new THREE.ShaderMaterial({uniforms:{uTime:{value:0}},
-  vertexShader:`varying vec3 vPos;varying vec3 vN;varying vec3 vView;void main(){vPos=position;vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.0);vView=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}`,
+const dbMat=new THREE.ShaderMaterial({uniforms:{uTime:{value:0},uScanY:{value:0}},
+  vertexShader:`varying vec3 vPos;varying vec3 vN;varying vec3 vView;varying float vWY;void main(){vPos=position;vN=normalize(normalMatrix*normal);vec4 wp=modelMatrix*vec4(position,1.0);vWY=wp.y;vec4 mv=modelViewMatrix*vec4(position,1.0);vView=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}`,
   fragmentShader:DB_FRAG});
-for(let i=0;i<3;i++){
-  const disk=new THREE.Mesh(new THREE.CylinderGeometry(dbRad,dbRad,diskH,48),dbMat); disk.position.y=i*(diskH+gap); dbGroup.add(disk);
-  const cap=new THREE.Mesh(new THREE.TorusGeometry(dbRad,0.32,12,52),new THREE.MeshBasicMaterial({color:0xffe1a8,transparent:true,opacity:.8,blending:THREE.AdditiveBlending,depthWrite:false}));
+for(let i=0;i<DB_DISKS;i++){
+  const disk=new THREE.Mesh(new THREE.CylinderGeometry(dbRad,dbRad,diskH,56),dbMat); disk.position.y=i*(diskH+gap); dbGroup.add(disk);
+  const cap=new THREE.Mesh(new THREE.TorusGeometry(dbRad,0.3,12,56),new THREE.MeshBasicMaterial({color:0xffe7b8,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}));
   cap.rotation.x=Math.PI/2; cap.position.y=i*(diskH+gap)+diskH/2; dbGroup.add(cap);
+  const cap2=new THREE.Mesh(new THREE.TorusGeometry(dbRad,0.2,12,56),new THREE.MeshBasicMaterial({color:0xffcf90,transparent:true,opacity:.4,blending:THREE.AdditiveBlending,depthWrite:false}));
+  cap2.rotation.x=Math.PI/2; cap2.position.y=i*(diskH+gap)-diskH/2; dbGroup.add(cap2);
 }
 dbGroup.add(new THREE.Mesh(new THREE.SphereGeometry(13,28,28),new THREE.MeshBasicMaterial({color:0xffb060,transparent:true,opacity:.045,blending:THREE.AdditiveBlending,depthWrite:false})));
 // radiant geometric grid foundation — concentric rings + radial spokes
@@ -256,10 +272,10 @@ dbHit.position.copy(dbGroup.position); scene.add(dbHit); pickables.push(dbHit);
 dbHit.userData={card:{kind:'The foundation · below',name:'The Database',color:'#ffc279',monitor:null,out:null,pipes:null,
   role:'The Supabase core — and the identity itself. Any model that loads it becomes Elvis; every agent in the fleet is one Elvis because they all read and write this. The foundation the whole system rests on.',
   tables:['v2_truth — core · elvis · symbiosis · operations · vivere · epics · agoge · maimap · openclaw','cross_instance_intel — the agent ↔ agent bridge','operating_instructions','relationship_hypotheses','instance_registry','inbox']}};
-const dlab=lab('the database','star'); dlab.position.set(0,(diskH+gap)*2+9,0); dbGroup.add(dlab); dlab.userData.el.classList.add('on');
+const dlab=lab('the database','star'); dlab.position.set(0,(diskH+gap)*(DB_DISKS-1)+9,0); dbGroup.add(dlab); dlab.userData.el.classList.add('on');
 
 // smooth luminous orbit ring with an optional comet-head trail (bright at the planet, fading behind)
-function glowRing(r,color,head,base){
+function glowRing(r,color,head,base,parent){
   const geo=new THREE.RingGeometry(r-1.4,r+1.4,Math.max(180,Math.floor(r*3)),1); geo.rotateX(-Math.PI/2);
   const mat=new THREE.ShaderMaterial({transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,
     uniforms:{uAngle:{value:0},uColor:{value:new THREE.Color(color).convertSRGBToLinear()},uR:{value:r},uHead:{value:head?1.0:0.0},uBase:{value:base}},
@@ -270,7 +286,7 @@ function glowRing(r,color,head,base){
         float trail=exp(-d*0.85)+0.4*exp(-d*4.0);
         float al=(uBase+uHead*trail)*radial;
         gl_FragColor=vec4(uColor*(0.7+1.6*al),al);}`});
-  scene.add(new THREE.Mesh(geo,mat)); return mat;
+  (parent||scene).add(new THREE.Mesh(geo,mat)); return mat;
 }
 
 // event bus — the spine every signal flows through
@@ -305,9 +321,11 @@ function makePlanetMat(color,atmo,dim){const m=new THREE.ShaderMaterial({uniform
 function makeAtmoMat(atmo,dim){return new THREE.ShaderMaterial({uniforms:{uAtmo:{value:new THREE.Color(atmo).convertSRGBToLinear()},uDim:{value:dim}},vertexShader:ATMO_VERT,fragmentShader:ATMO_FRAG,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.BackSide});}
 
 const planets=[];
+const INCL=[[0.05,0.03],[-0.07,0.04],[0.09,-0.05],[-0.04,0.08]];
 PLANETS.forEach((pl,pi)=>{
-  const om=glowRing(pl.R,pl.color,true,pl.faint?0.07:0.11);
-  const pivot=new THREE.Object3D(); pivot.rotation.y=[0.7,2.5,4.2,5.6][pi]; scene.add(pivot);
+  const orbitGroup=new THREE.Object3D(); orbitGroup.rotation.x=INCL[pi][0]; orbitGroup.rotation.z=INCL[pi][1]; scene.add(orbitGroup);
+  const om=glowRing(pl.R,pl.color,true,pl.faint?0.07:0.11,orbitGroup);
+  const pivot=new THREE.Object3D(); pivot.rotation.y=[0.7,2.5,4.2,5.6][pi]; orbitGroup.add(pivot);
   const atmo=new THREE.Color(pl.color).lerp(new THREE.Color(0xffffff),0.24);
   const dim=pl.faint?0.62:1.0;
   const mesh=new THREE.Mesh(new THREE.SphereGeometry(pl.size,64,64),makePlanetMat(pl.color,atmo,dim));
@@ -392,10 +410,12 @@ function animate(){
   else controls.update();
   for(let i=0;i<starMats.length;i++) starMats[i].uniforms.uTime.value=t;
   for(let i=0;i<planetMats.length;i++) planetMats[i].uniforms.uTime.value=t;
-  dbMat.uniforms.uTime.value=t;
+  for(let i=0;i<beamMats.length;i++) beamMats[i].uniforms.uTime.value=t;
+  dbMat.uniforms.uTime.value=t; dbMat.uniforms.uScanY.value=-93+19*((t*0.16)%1.0);
   busNode.scale.setScalar(1+0.14*Math.sin(t*2.1)); busNode.material.emissiveIntensity=0.8+0.5*Math.sin(t*2.1);
-  for(let i=0;i<FLOW_N;i++){const f=(flowSeed[i]+t*0.05)%1.0; flowPos[i*3]=Math.sin(f*18.8+flowSeed[i]*6.28)*0.7; flowPos[i*3+1]=FLOW_Y0+(FLOW_Y1-FLOW_Y0)*f; flowPos[i*3+2]=Math.cos(f*18.8+flowSeed[i]*6.28)*0.7;}
-  flowGeo.attributes.position.needsUpdate=true;
+  for(let i=0;i<FLOW_N;i++){const f=(flowSeed[i]+t*0.05)%1.0; flowPos[i*3]=Math.sin(f*18.8+flowSeed[i]*6.28)*0.7; flowPos[i*3+1]=FLOW_Y0+(FLOW_Y1-FLOW_Y0)*f; flowPos[i*3+2]=Math.cos(f*18.8+flowSeed[i]*6.28)*0.7;
+    const env=Math.min(1,f/0.12)*Math.min(1,(1-f)/0.16); flowCol[i*3]=env;flowCol[i*3+1]=env;flowCol[i*3+2]=env;}
+  flowGeo.attributes.position.needsUpdate=true; flowGeo.attributes.color.needsUpdate=true;
   heart.rotation.y+=dt*0.45;
   const b=1+0.04*Math.sin(t*1.3); carson.scale.setScalar(b); elvis.scale.setScalar(1+0.04*Math.sin(t*1.3+1.4));
   source.rotation.y+=dt*0.25; source.rotation.x+=dt*0.12; source.scale.setScalar(1+0.05*Math.sin(t*0.9));
