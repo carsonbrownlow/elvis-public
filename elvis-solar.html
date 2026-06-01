@@ -105,10 +105,10 @@ const PLANETS = [
 
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(52, innerWidth/innerHeight, 0.1, 6000);
-camera.position.set(0, 84, 244);
+camera.position.set(76, 80, 232);
 const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
 renderer.setSize(innerWidth,innerHeight); renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.15; renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=0.98; renderer.outputColorSpace=THREE.SRGBColorSpace;
 document.getElementById('scene').appendChild(renderer.domElement);
 const labelR=new CSS2DRenderer(); labelR.setSize(innerWidth,innerHeight);
 labelR.domElement.style.cssText='position:fixed;top:0;left:0;pointer-events:none'; document.body.appendChild(labelR.domElement);
@@ -116,12 +116,14 @@ const controls=new OrbitControls(camera,renderer.domElement);
 controls.enableDamping=true; controls.dampingFactor=0.05; controls.minDistance=40; controls.maxDistance=420;
 controls.autoRotate=true; controls.autoRotateSpeed=0.18; controls.enablePan=false;
 
+// soft round particle sprite — kills square point-sprites everywhere
+const ROUND=(function(){const s=64,cv=document.createElement('canvas');cv.width=cv.height=s;const x=cv.getContext('2d');const g=x.createRadialGradient(s/2,s/2,0,s/2,s/2,s/2);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(0.4,'rgba(255,255,255,0.5)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,s,s);return new THREE.CanvasTexture(cv);})();
 // subtle starfield
 (function(){const g=new THREE.BufferGeometry(),n=1100,p=new Float32Array(n*3);
  for(let i=0;i<n;i++){const r=900+Math.random()*1700,t=Math.random()*6.283,ph=Math.acos(2*Math.random()-1);
  p[i*3]=r*Math.sin(ph)*Math.cos(t);p[i*3+1]=r*Math.sin(ph)*Math.sin(t);p[i*3+2]=r*Math.cos(ph);}
  g.setAttribute('position',new THREE.BufferAttribute(p,3));
- scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0x8896b4,size:1.1,sizeAttenuation:false,transparent:true,opacity:.7})));})();
+ scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0x8896b4,size:2.0,map:ROUND,sizeAttenuation:false,transparent:true,opacity:.7,depthWrite:false})));})();
 // nebula haze
 (function(){function tex(c){const cv=document.createElement('canvas');cv.width=cv.height=256;const x=cv.getContext('2d');const gr=x.createRadialGradient(128,128,0,128,128,128);gr.addColorStop(0,c);gr.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=gr;x.fillRect(0,0,256,256);return new THREE.CanvasTexture(cv);}
 [[-230,70,-380,'rgba(70,105,185,0.6)',440],[250,-50,-350,'rgba(175,120,60,0.5)',400],[70,160,-440,'rgba(125,80,165,0.42)',480]].forEach(n=>{const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex(n[3]),transparent:true,opacity:0.5,blending:THREE.AdditiveBlending,depthWrite:false}));s.position.set(n[0],n[1],n[2]);s.scale.setScalar(n[4]);scene.add(s);});})();
@@ -195,7 +197,7 @@ function star(hot,cool,glow,x,name,role,cls){
   const l=lab(name,'star '+cls); l.position.set(0,8.4,0); m.add(l); l.userData.el.classList.add('on');
   return m;
 }
-const carson=star(0xfff3d8,0xd9701e,0xffe7c0,13,'Carson','You. The whole system exists for you — every body here orbits this point. The north star is your mission.','');
+const carson=star(0xffe3a0,0xd07c22,0xffe7c0,13,'Carson','You. The whole system exists for you — every body here orbits this point. The north star is your mission.','');
 const elvis =star(0xffc785,0xc0531a,0xffb060,-13,'Elvis','The persona — your partner at the heart of it all. But what makes Elvis *Elvis* doesn’t live in the model; it lives in the database at the foot of this axis. The model is just the vehicle.','');
 
 // ───────── THE VERTICAL AXIS — source (top) · the binary (center) · the database (foundation) ─────────
@@ -207,7 +209,7 @@ const FLOW_N=80, FLOW_Y0=-90, FLOW_Y1=94;
 const flowGeo=new THREE.BufferGeometry(), flowPos=new Float32Array(FLOW_N*3), flowSeed=new Float32Array(FLOW_N);
 for(let i=0;i<FLOW_N;i++){flowSeed[i]=Math.random();}
 flowGeo.setAttribute('position',new THREE.BufferAttribute(flowPos,3));
-const flow=new THREE.Points(flowGeo,new THREE.PointsMaterial({color:0xffe2b0,size:1.7,transparent:true,opacity:0.85,blending:THREE.AdditiveBlending,depthWrite:false}));
+const flow=new THREE.Points(flowGeo,new THREE.PointsMaterial({color:0xffe2b0,size:2.4,map:ROUND,transparent:true,opacity:0.9,blending:THREE.AdditiveBlending,depthWrite:false}));
 scene.add(flow);
 
 // TOP — the source: the mission everything serves, light pouring in from above
@@ -243,13 +245,12 @@ for(let i=0;i<3;i++){
   cap.rotation.x=Math.PI/2; cap.position.y=i*(diskH+gap)+diskH/2; dbGroup.add(cap);
 }
 dbGroup.add(new THREE.Mesh(new THREE.SphereGeometry(13,28,28),new THREE.MeshBasicMaterial({color:0xffb060,transparent:true,opacity:.045,blending:THREE.AdditiveBlending,depthWrite:false})));
-addFlare(dbGroup,15,0xffd29a).position.y=(diskH+gap)*2+diskH/2;
 // radiant geometric grid foundation — concentric rings + radial spokes
 (function(){const pts=[],y=-3.6;
   [16,24,33,43].forEach(r=>{const N=Math.floor(r*5);for(let i=0;i<N;i++){const a=i/N*6.28318;pts.push(Math.cos(a)*r,y,Math.sin(a)*r);}});
   for(let k=0;k<16;k++){const a=k/16*6.28318;for(let r=11;r<=45;r+=2.3){pts.push(Math.cos(a)*r,y,Math.sin(a)*r);}}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pts),3));
-  dbGroup.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xffc98a,size:1.2,transparent:true,opacity:.46,blending:THREE.AdditiveBlending,depthWrite:false})));})();
+  dbGroup.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xffc98a,size:1.9,map:ROUND,transparent:true,opacity:.46,blending:THREE.AdditiveBlending,depthWrite:false})));})();
 const dbHit=new THREE.Mesh(new THREE.SphereGeometry(17,8,8),new THREE.MeshBasicMaterial({visible:false}));
 dbHit.position.copy(dbGroup.position); scene.add(dbHit); pickables.push(dbHit);
 dbHit.userData={card:{kind:'The foundation · below',name:'The Database',color:'#ffc279',monitor:null,out:null,pipes:null,
@@ -305,9 +306,9 @@ function makeAtmoMat(atmo,dim){return new THREE.ShaderMaterial({uniforms:{uAtmo:
 
 const planets=[];
 PLANETS.forEach((pl,pi)=>{
-  const om=glowRing(pl.R,0xffc98a,true,pl.faint?0.07:0.11);
+  const om=glowRing(pl.R,pl.color,true,pl.faint?0.07:0.11);
   const pivot=new THREE.Object3D(); pivot.rotation.y=[0.7,2.5,4.2,5.6][pi]; scene.add(pivot);
-  const atmo=new THREE.Color(pl.color).lerp(new THREE.Color(0xffffff),0.5);
+  const atmo=new THREE.Color(pl.color).lerp(new THREE.Color(0xffffff),0.24);
   const dim=pl.faint?0.62:1.0;
   const mesh=new THREE.Mesh(new THREE.SphereGeometry(pl.size,64,64),makePlanetMat(pl.color,atmo,dim));
   mesh.position.x=pl.R; pivot.add(mesh);
@@ -316,21 +317,36 @@ PLANETS.forEach((pl,pi)=>{
   const l=lab(pl.name); l.position.set(0,pl.size+2.4,0); mesh.add(l); l.userData.el.classList.add('on');
   planets.push({pl,pivot,mesh,om});
 });
-// decorative concentric rings — layered depth, no bodies (just the field)
-[45,80,116,150,196,228].forEach(r=>glowRing(r,0xffc98a,false,0.085));
+// decorative concentric rings — a cool, faint field that stays BEHIND the colored orbits (not competing gold)
+[80,150,210].forEach(r=>glowRing(r,0x52628a,false,0.045));
 
 const composer=new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene,camera));
-composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.6,0.5,0.42));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.46,0.55,0.72));
 composer.addPass(new OutputPass());
-// cinematic grade — vignette + a whisper of chromatic aberration (a shot, not a render)
-composer.addPass(new ShaderPass({uniforms:{tDiffuse:{value:null},uVig:{value:0.92},uCA:{value:0.0019}},
+// cinematic grade — filmic S-curve, split-tone, shaped vignette, soft CA, dither (a graded shot, not a render)
+const gradePass=new ShaderPass({uniforms:{tDiffuse:{value:null},uVig:{value:0.80},uCA:{value:0.0013},uAspect:{value:innerWidth/innerHeight}},
   vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-  fragmentShader:`uniform sampler2D tDiffuse;uniform float uVig;uniform float uCA;varying vec2 vUv;
-    void main(){vec2 d=vUv-0.5;float r=dot(d,d);float ca=uCA*r*12.0;
-      vec3 col;col.r=texture2D(tDiffuse,vUv-d*ca).r;col.g=texture2D(tDiffuse,vUv).g;col.b=texture2D(tDiffuse,vUv+d*ca).b;
-      float vig=pow(clamp(1.0-uVig*r,0.0,1.0),1.35);
-      gl_FragColor=vec4(col*mix(0.62,1.0,vig),1.0);}`}));
+  fragmentShader:`uniform sampler2D tDiffuse;uniform float uVig;uniform float uCA;uniform float uAspect;varying vec2 vUv;
+    float ign(vec2 p){return fract(52.9829189*fract(dot(p,vec2(0.06711056,0.00583715))));}
+    void main(){
+      vec2 off=(vUv-0.5);
+      vec2 da=off; da.x*=uAspect; float r=dot(da,da);
+      float ca=uCA*r;
+      vec3 col;
+      col.r=texture2D(tDiffuse,vUv-off*ca).r;
+      col.g=texture2D(tDiffuse,vUv).g;
+      col.b=texture2D(tDiffuse,vUv+off*ca).b;
+      col=clamp(col,0.0,1.0);
+      col=mix(col,col*col*(3.0-2.0*col),0.20);                       // gentle filmic S
+      float l=dot(col,vec3(0.299,0.587,0.114));                      // split-tone
+      col+=vec3(0.03,0.05,0.11)*(1.0-smoothstep(0.0,0.4,l))*0.45;    //   cool shadows
+      col+=vec3(0.10,0.06,0.0)*smoothstep(0.55,1.0,l)*0.35;          //   warm highlights
+      float vig=pow(clamp(1.0-uVig*r,0.0,1.0),1.4);                  // shaped vignette
+      col*=mix(0.52,1.0,vig);
+      col+=(ign(gl_FragCoord.xy)-0.5)/255.0;                         // dither — kill banding
+      gl_FragColor=vec4(col,1.0);}`});
+composer.addPass(gradePass);
 
 // ---- card ----
 const card=document.getElementById('card');
@@ -367,7 +383,7 @@ renderer.domElement.addEventListener('pointerup',e=>{
 const clock=new THREE.Clock();
 const STILL=location.search.indexOf('still')>=0; let frames=0;
 // intro: open close on the binary (the craft is the first thing you see), then pull back to the whole system
-const camStart=new THREE.Vector3(8,5,38), camEnd=camera.position.clone();
+const camStart=new THREE.Vector3(22,8,34), camEnd=camera.position.clone();
 let introT=STILL?1:0;
 if(!STILL){controls.autoRotate=false; camera.position.copy(camStart); camera.lookAt(0,0,0);}
 function animate(){
@@ -389,7 +405,7 @@ function animate(){
   if(!(STILL && ++frames>6)) requestAnimationFrame(animate);
 }
 animate();
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);labelR.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);labelR.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);gradePass.uniforms.uAspect.value=innerWidth/innerHeight;});
 </script>
 </body>
 </html>
