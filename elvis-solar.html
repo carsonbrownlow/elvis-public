@@ -194,7 +194,6 @@ function star(hot,cool,glow,x,name,role,cls){
   // soft outer corona glow
   m.add(new THREE.Mesh(new THREE.SphereGeometry(7.0,40,40),new THREE.MeshBasicMaterial({color:glow,transparent:true,opacity:.12,blending:THREE.AdditiveBlending,depthWrite:false})));
   m.userData={card:{kind:'The center',name,role,color:'#'+glow.toString(16),pipes:null}}; pickables.push(m);
-  const l=lab(name,'star '+cls); l.position.set(0,8.4,0); m.add(l); l.userData.el.classList.add('on');
   return m;
 }
 const carson=star(0xffe3a0,0xd07c22,0xffe7c0,13,'Carson','You. The whole system exists for you — every body here orbits this point. The north star is your mission.','');
@@ -217,6 +216,13 @@ function strandCurve(phase){const pts=[],N=300;for(let i=0;i<=N;i++){const f=i/N
   for(let i=0;i<=N;i++){const f=i/N,y=HELIX_YB+(HELIX_YT-HELIX_YB)*f,a=f*HELIX_TURNS*6.28318;
     const rung=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.13,2*HELIX_R,6),rungMat);
     rung.position.set(0,y,0); rung.rotation.z=Math.PI/2; rung.rotation.y=-a; scene.add(rung);}})();
+// a soft shaft of light behind the helix — heaven's light descending the spine (ethereal, no hard edge)
+(function(){const W=128,H=512,cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d');
+  for(let py=0;py<H;py++){const vy=1-py/H; const vgrad=Math.pow(vy,0.7)*0.9+0.05; // bright at top (heaven), fades down
+    for(let px=0;px<W;px++){const dx=(px/W-0.5)*2; const hgr=Math.exp(-dx*dx*6.0); const a=vgrad*hgr;
+      x.fillStyle='rgba(255,240,210,'+a.toFixed(3)+')'; x.fillRect(px,py,1,1);}}
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,opacity:0.5,blending:THREE.AdditiveBlending,depthWrite:false}));
+  sp.position.set(0,(HELIX_YB+HELIX_YT)/2,-2); sp.scale.set(42,(HELIX_YT-HELIX_YB)*1.02,1); scene.add(sp);})();
 // energy flowing along the spine — foundation → core → source
 const FLOW_N=90, FLOW_Y0=HELIX_YB, FLOW_Y1=HELIX_YT;
 const flowGeo=new THREE.BufferGeometry(), flowPos=new Float32Array(FLOW_N*3), flowCol=new Float32Array(FLOW_N*3), flowSeed=new Float32Array(FLOW_N);
@@ -333,6 +339,14 @@ PLANETS.forEach((pl,pi)=>{
   const mesh=new THREE.Mesh(new THREE.SphereGeometry(pl.size,64,64),makePlanetMat(pl.color,atmo,dim));
   mesh.position.x=pl.R; pivot.add(mesh);
   mesh.add(new THREE.Mesh(new THREE.SphereGeometry(pl.size*1.24,40,40),makeAtmoMat(atmo,dim)));
+  // FORMING planets get an incomplete, tilted accretion disk — "still coming together", not just dim
+  if(pl.faint){
+    const AN=110,ap=new Float32Array(AN*3);
+    for(let k=0;k<AN;k++){const a=(k/AN)*5.1,rr=pl.size*1.9+Math.random()*pl.size*1.1;ap[k*3]=Math.cos(a)*rr;ap[k*3+1]=(Math.random()-0.5)*0.7;ap[k*3+2]=Math.sin(a)*rr;}
+    const ag=new THREE.BufferGeometry();ag.setAttribute('position',new THREE.BufferAttribute(ap,3));
+    const adisk=new THREE.Points(ag,new THREE.PointsMaterial({color:pl.color,size:1.9,map:ROUND,transparent:true,opacity:0.55,blending:THREE.AdditiveBlending,depthWrite:false}));
+    adisk.rotation.x=1.15; adisk.rotation.z=0.35; mesh.add(adisk); mesh.userData.adisk=adisk;
+  }
   mesh.userData={card:{kind:pl.kind,name:pl.name,role:pl.role,color:'#'+pl.color.toString(16),monitor:pl.monitor,out:pl.out,pipes:pl.pipes}}; pickables.push(mesh);
   const l=lab(pl.name); l.position.set(0,pl.size+2.4,0); mesh.add(l); l.userData.el.classList.add('on');
   planets.push({pl,pivot,mesh,om});
@@ -404,11 +418,12 @@ const clock=new THREE.Clock();
 const STILL=location.search.indexOf('still')>=0; let frames=0;
 // intro: open close on the binary (the craft is the first thing you see), then pull back to the whole system
 const camStart=new THREE.Vector3(22,8,34), camEnd=camera.position.clone();
-let introT=STILL?1:0;
+let introT=STILL?1:0, holdT=STILL?1:0;
 if(!STILL){controls.autoRotate=false; camera.position.copy(camStart); camera.lookAt(0,0,0);}
 function animate(){
   const dt=Math.min(clock.getDelta(),0.05),t=clock.elapsedTime;
-  if(introT<1){introT=Math.min(1,introT+dt*0.20); const s=introT, e=s*s*s*(s*(s*6.0-15.0)+10.0); camera.position.lerpVectors(camStart,camEnd,e); camera.lookAt(0,0,0); if(introT>=1)controls.autoRotate=true;}
+  if(holdT<1){holdT=Math.min(1,holdT+dt*0.9); camera.position.copy(camStart); camera.lookAt(0,0,0);}
+  else if(introT<1){introT=Math.min(1,introT+dt*0.22); const s=introT, e=s*s*s*(s*(s*6.0-15.0)+10.0); camera.position.lerpVectors(camStart,camEnd,e); camera.lookAt(0,0,0); if(introT>=1)controls.autoRotate=true;}
   else controls.update();
   for(let i=0;i<starMats.length;i++) starMats[i].uniforms.uTime.value=t;
   for(let i=0;i<planetMats.length;i++) planetMats[i].uniforms.uTime.value=t;
@@ -423,7 +438,7 @@ function animate(){
   const b=1+0.04*Math.sin(t*1.3); carson.scale.setScalar(b); elvis.scale.setScalar(1+0.04*Math.sin(t*1.3+1.4));
   if(source.userData.glory){source.userData.glory.material.rotation+=dt*0.035; source.userData.glory.scale.setScalar(80*(1+0.04*Math.sin(t*0.7)));}
   crystal.rotation.y+=dt*0.12; crystal.rotation.x+=dt*0.05; lattice.rotation.y-=dt*0.08; lattice.rotation.x+=dt*0.045;
-  planets.forEach(p=>{p.pivot.rotation.y+=dt*p.pl.speed;p.mesh.rotation.y+=dt*0.3;if(p.om)p.om.uniforms.uAngle.value=-p.pivot.rotation.y;});
+  planets.forEach(p=>{p.pivot.rotation.y+=dt*p.pl.speed;p.mesh.rotation.y+=dt*0.3;if(p.om)p.om.uniforms.uAngle.value=-p.pivot.rotation.y;if(p.mesh.userData.adisk)p.mesh.userData.adisk.rotation.y+=dt*0.5;});
   composer.render(); labelR.render(scene,camera);
   if(!(STILL && ++frames>6)) requestAnimationFrame(animate);
 }
