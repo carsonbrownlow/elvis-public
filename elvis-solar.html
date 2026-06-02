@@ -48,6 +48,19 @@
   .ptag{font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#7f93c4;margin:0 8px}
   .meta{margin-top:8px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#9098ab}
   .ok{color:#5fcf97} .warn{color:#e6a95c}
+  /* in-world floating card (CSS3D, anchored to a body, grows as you zoom in) */
+  .floater{width:250px;background:linear-gradient(150deg,rgba(30,36,54,.9),rgba(11,14,24,.94));
+    border:1px solid rgba(160,180,230,.34);border-radius:16px;padding:17px 19px;
+    box-shadow:0 12px 50px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.14);color:#e9ecf2;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .floater .fkind{font-size:11px;text-transform:uppercase;letter-spacing:.13em;color:#8a93a6}
+  .floater h3{font-size:23px;margin:4px 0 9px;font-weight:600;letter-spacing:-.01em}
+  .floater .frole{font-size:13px;color:#aeb8c9;line-height:1.5}
+  .floater .fsec{font-size:9.5px;text-transform:uppercase;letter-spacing:.13em;color:#6f7889;margin:14px 0 6px}
+  .floater .fitem{font-size:12px;color:#bcc6d8;line-height:1.5;padding:2px 0}
+  .floater .fdot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:7px;vertical-align:middle}
+  .floater .ftag{font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#7f93c4;float:right}
+  .floater .fmono{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#9fb0d8;line-height:1.5}
 </style>
 </head>
 <body>
@@ -55,7 +68,6 @@
 <div id="scene"></div>
 <div id="grain"></div>
 <div id="foot">tap a planet to open it · tap empty space to close</div>
-<div id="card"><span class="close" id="cardClose">×</span><div class="kind" id="cKind"></div><h2 id="cName"></h2><div class="crole" id="cRole"></div><div id="cBody"></div></div>
 
 <script type="importmap">
 { "imports": {
@@ -67,6 +79,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -112,6 +125,9 @@ renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=0
 document.getElementById('scene').appendChild(renderer.domElement);
 const labelR=new CSS2DRenderer(); labelR.setSize(innerWidth,innerHeight);
 labelR.domElement.style.cssText='position:fixed;top:0;left:0;pointer-events:none'; document.body.appendChild(labelR.domElement);
+// CSS3D layer for the in-world floating cards (anchored in 3D space, scale with zoom)
+const css3d=new CSS3DRenderer(); css3d.setSize(innerWidth,innerHeight);
+css3d.domElement.style.cssText='position:fixed;top:0;left:0;z-index:6;pointer-events:none'; document.body.appendChild(css3d.domElement);
 const controls=new OrbitControls(camera,renderer.domElement);
 controls.enableDamping=true; controls.dampingFactor=0.06; controls.minDistance=14; controls.maxDistance=620;
 controls.autoRotate=true; controls.autoRotateSpeed=0.16; controls.enablePan=true; controls.screenSpacePanning=true;
@@ -421,27 +437,26 @@ const gradePass=new ShaderPass({uniforms:{tDiffuse:{value:null},uVig:{value:0.80
       gl_FragColor=vec4(col,1.0);}`});
 composer.addPass(gradePass);
 
-// ---- card ----
-const card=document.getElementById('card');
-function colorDot(c){return `<span class="pdot" style="background:${c}"></span>`;}
-function openCard(d){
-  document.getElementById('cKind').textContent=d.kind;
-  document.getElementById('cName').textContent=d.name;
-  document.getElementById('cRole').textContent=d.role;
-  let h='';
-  if(d.monitor) h+=`<div class="seclbl">monitor catches</div><div class="mono">${d.monitor}</div>`;
-  if(d.tables) h+=`<div class="seclbl">data layer</div>`+d.tables.map(t=>`<div class="leaf">${t}</div>`).join('');
+// ---- floating card (CSS3D, anchored in-world to the tapped body) ----
+let floater=null;
+function buildFloaterHTML(d){
+  let h=`<div class="fkind">${d.kind}</div><h3>${d.name}</h3><div class="frole">${d.role}</div>`;
+  if(d.monitor) h+=`<div class="fsec">monitor catches</div><div class="fmono">${d.monitor}</div>`;
+  if(d.tables) h+=`<div class="fsec">data layer</div>`+d.tables.map(t=>`<div class="fitem">${t}</div>`).join('');
   if(d.pipes&&d.pipes.length){
-    h+=`<div class="seclbl">pipelines</div>`+d.pipes.map(p=>`<div class="pipe"><div class="ph">${colorDot(d.color)}<span class="pname">${p.n}</span><span class="ptag">${p.tag||''}</span><span class="chev">›</span></div><div class="pbody"><div class="inner">${p.d}<div class="meta"><span class="${p.host==='in-session'?'warn':'ok'}">● ${p.host}</span> · ${p.id}</div></div></div></div>`).join('');
-  } else if(d.pipes&&!d.pipes.length){ h+=`<div class="seclbl">pipelines</div><div class="empty">None yet — still forming.</div>`; }
-  if(d.out) h+=`<div class="seclbl">outbound</div>`+d.out.map(o=>`<div class="leaf">${o}</div>`).join('');
-  const body=document.getElementById('cBody'); body.innerHTML=h;
-  body.querySelectorAll('.pipe .ph').forEach(x=>x.onclick=()=>x.parentElement.classList.toggle('x'));
-  card.classList.add('open'); document.getElementById('foot').style.opacity='0';
+    h+=`<div class="fsec">pipelines</div>`+d.pipes.map(p=>`<div class="fitem"><span class="fdot" style="background:${d.color}"></span>${p.n}<span class="ftag">${p.tag||''}</span></div>`).join('');
+  } else if(d.pipes&&!d.pipes.length){ h+=`<div class="fsec">pipelines</div><div class="fitem" style="font-style:italic;color:#7b8395">None yet — still forming.</div>`; }
+  if(d.out) h+=`<div class="fsec">outbound</div>`+d.out.map(o=>`<div class="fitem">${o}</div>`).join('');
+  return h;
 }
-function closeCard(){card.classList.remove('open'); document.getElementById('foot').style.opacity='1';}
-document.getElementById('cardClose').onclick=closeCard;
-window.__demo=(name)=>{const m=pickables.find(o=>o.userData.card&&o.userData.card.name===(name||'General'));if(m)openCard(m.userData.card);};
+function closeCard(){ if(floater){ scene.remove(floater); floater=null; } document.getElementById('foot').style.opacity='1'; }
+function openCard(d,obj){
+  closeCard();
+  const el=document.createElement('div'); el.className='floater'; el.innerHTML=buildFloaterHTML(d);
+  floater=new CSS3DObject(el); floater.scale.setScalar(0.045); floater.userData.anchor=obj||null;
+  scene.add(floater); document.getElementById('foot').style.opacity='0';
+}
+window.__demo=(name)=>{const m=pickables.find(o=>o.userData.card&&o.userData.card.name===(name||'General'));if(m)openCard(m.userData.card,m);};
 window.__view=(x,y,z,tx,ty,tz)=>{controls.autoRotate=false;camera.position.set(x,y,z);controls.target.set(tx||0,ty||0,tz||0);controls.update();if(STILL){frames=0;requestAnimationFrame(animate);}};
 window.__focus=(name)=>{const m=pickables.find(o=>o.userData.card&&o.userData.card.name===name); if(m)focusOn(m); return !!m;};
 
@@ -451,7 +466,7 @@ renderer.domElement.addEventListener('pointerup',e=>{
   if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>7)return;
   m2.x=(e.clientX/innerWidth)*2-1;m2.y=-(e.clientY/innerHeight)*2+1;
   ray.setFromCamera(m2,camera);const hit=ray.intersectObjects(pickables,false)[0];
-  if(hit){openCard(hit.object.userData.card); focusOn(hit.object);} else {closeCard(); focusOn(null);}
+  if(hit){openCard(hit.object.userData.card, hit.object); focusOn(hit.object);} else {closeCard(); focusOn(null);}
 });
 
 const clock=new THREE.Clock();
@@ -494,11 +509,17 @@ function animate(){
   crystal.rotation.y+=dt*0.12; crystal.rotation.x+=dt*0.05; lattice.rotation.y-=dt*0.08; lattice.rotation.x+=dt*0.045;
   planets.forEach(p=>{p.pivot.rotation.y+=dt*p.pl.speed;p.mesh.rotation.y+=dt*0.3;if(p.om)p.om.uniforms.uAngle.value=-p.pivot.rotation.y;if(p.mesh.userData.adisk)p.mesh.userData.adisk.rotation.y+=dt*0.5;});
   for(let i=0;i<moons.length;i++) moons[i].pivot.rotation.y+=dt*moons[i].speed;
-  composer.render(); labelR.render(scene,camera);
+  // floating card: anchor to its body (offset up), billboard to face camera, scale grows as you zoom in
+  if(floater){
+    const a=floater.userData.anchor;
+    if(a){a.getWorldPosition(_tv); floater.position.copy(_tv); floater.position.y += 7;}
+    floater.quaternion.copy(camera.quaternion);
+  }
+  composer.render(); labelR.render(scene,camera); css3d.render(scene,camera);
   if(!(STILL && ++frames>6)) requestAnimationFrame(animate);
 }
 animate();
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);labelR.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);gradePass.uniforms.uAspect.value=innerWidth/innerHeight;});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);labelR.setSize(innerWidth,innerHeight);css3d.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);gradePass.uniforms.uAspect.value=innerWidth/innerHeight;});
 </script>
 </body>
 </html>
