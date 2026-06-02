@@ -11,17 +11,23 @@
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",system-ui,sans-serif;-webkit-font-smoothing:antialiased;letter-spacing:.01em}
   #scene{position:fixed;inset:0}
   #grain{position:fixed;inset:0;z-index:7;pointer-events:none;opacity:.05;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-  .lab{font-size:11.5px;font-weight:450;color:#dbe2ee;text-shadow:0 1px 2px rgba(0,0,0,.92),0 0 1px rgba(0,0,0,.95);letter-spacing:.07em;pointer-events:none;white-space:nowrap;opacity:0;transition:opacity .5s}
-  .lab.on{opacity:.8}
+  .lab{font-size:11.5px;font-weight:520;color:#f4f7ff;text-shadow:0 1px 4px rgba(0,0,0,.96),0 0 10px rgba(0,0,0,.9);letter-spacing:.07em;pointer-events:none;white-space:nowrap;opacity:0;transition:opacity .5s;
+    background:rgba(4,5,10,.34);border:1px solid rgba(255,255,255,.06);border-radius:999px;padding:2px 7px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .lab.on{opacity:.92}
   .lab.star{font-size:13px;font-weight:500;letter-spacing:.14em}
   .lab.star.on{opacity:.95}
-  #hdr{position:fixed;top:15px;left:18px;z-index:5}
+  #hdr{position:fixed;top:15px;left:18px;z-index:9;max-width:min(620px,calc(100vw - 36px))}
   #hdr h1{font-size:12.5px;font-weight:500;letter-spacing:.28em;color:#e6e9f0;opacity:.9}
-  #hdr p{font-size:10.5px;font-weight:400;color:#737b8c;margin-top:4px;letter-spacing:.03em}
+  #hdr p{font-size:10.5px;font-weight:450;color:#98a2b6;margin-top:4px;letter-spacing:.03em;line-height:1.35}
   #foot{position:fixed;bottom:13px;left:0;right:0;text-align:center;font-size:11px;color:#565d6e;z-index:5;pointer-events:none;transition:opacity .3s}
+  #nav{position:fixed;top:62px;left:18px;z-index:9;display:flex;gap:7px;flex-wrap:wrap;max-width:min(680px,calc(100vw - 36px))}
+  #nav button{appearance:none;border:1px solid rgba(190,205,245,.18);border-radius:999px;background:rgba(7,10,18,.52);color:#c8d1e2;
+    font:500 11px/1 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;letter-spacing:.04em;padding:8px 10px;cursor:pointer;
+    box-shadow:0 7px 24px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.06);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+  #nav button:hover,#nav button.active{color:#fff;border-color:rgba(255,218,160,.42);background:rgba(38,30,20,.58);box-shadow:0 0 22px rgba(255,183,92,.16),inset 0 1px 0 rgba(255,255,255,.1)}
   /* card */
-  #card{position:fixed;top:0;right:0;height:100%;width:min(372px,90vw);z-index:8;
-    background:linear-gradient(150deg,rgba(38,44,64,.44),rgba(13,16,27,.58));backdrop-filter:blur(60px) saturate(1.9);-webkit-backdrop-filter:blur(60px) saturate(1.9);
+  #card{position:fixed;top:0;right:0;height:100%;width:min(392px,90vw);z-index:10;
+    background:linear-gradient(150deg,rgba(34,40,58,.72),rgba(9,12,22,.82));backdrop-filter:blur(52px) saturate(1.7);-webkit-backdrop-filter:blur(52px) saturate(1.7);
     border-left:1px solid rgba(160,180,230,.22);box-shadow:-40px 0 100px rgba(0,0,0,.5),inset 1px 0 0 rgba(255,255,255,.12),inset 0 1px 0 rgba(255,255,255,.06);
     transform:translateX(102%);transition:transform .5s cubic-bezier(.16,.84,.24,1);padding:30px 24px;overflow-y:auto}
   #card.open{transform:translateX(0)}
@@ -62,13 +68,31 @@
   .floater .fdot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:7px;vertical-align:middle}
   .floater .ftag{font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#7f93c4;float:right}
   .floater .fmono{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#9fb0d8;line-height:1.5}
+  @media (max-width:700px){
+    #hdr{top:14px;left:14px;right:14px;max-width:none}
+    #hdr h1{font-size:12px;letter-spacing:.24em}
+    #hdr p{font-size:10px;max-width:320px}
+    #nav{top:70px;left:12px;right:12px;max-width:none;gap:6px;overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px;scrollbar-width:none}
+    #nav::-webkit-scrollbar{display:none}
+    #nav button{flex:0 0 auto;padding:8px 9px;font-size:10.5px}
+    #foot{bottom:9px;font-size:10px;color:#697287}
+    #card{top:auto;bottom:0;left:0;right:0;width:100%;height:auto;max-height:54dvh;border-left:0;border-top:1px solid rgba(160,180,230,.22);
+      transform:translateY(105%);padding:24px 18px 28px;border-radius:18px 18px 0 0}
+    #card.open{transform:translateY(0)}
+    #card h2{font-size:21px}
+    #card .crole{font-size:13px}
+    .floater{display:none}
+    .lab{font-size:10.5px;padding:2px 6px}
+  }
 </style>
 </head>
 <body>
-<div id="hdr"><h1>ELVIS · THE SYSTEM</h1><p>the mission above · you &amp; me at the heart · the database below · drag to orbit · tap any body</p></div>
+<div id="hdr"><h1>ELVIS · THE SYSTEM</h1><p>center: Carson + Elvis · foundation: database · agents orbit the work</p></div>
+<nav id="nav" aria-label="Explore Elvis system"></nav>
+<aside id="card" aria-live="polite" aria-label="Selected system body"></aside>
 <div id="scene"></div>
 <div id="grain"></div>
-<div id="foot">tap a planet to open it · tap empty space to close</div>
+<div id="foot">pick a body above · drag to orbit · tap empty space to close</div>
 
 <script type="importmap">
 { "imports": {
@@ -120,8 +144,9 @@ const PLANETS = [
 ];
 
 const scene=new THREE.Scene();
-const camera=new THREE.PerspectiveCamera(52, innerWidth/innerHeight, 0.1, 6000);
-camera.position.set(76, 80, 232);
+const MOBILE=innerWidth<700;
+const camera=new THREE.PerspectiveCamera(MOBILE?62:52, innerWidth/innerHeight, 0.1, 6000);
+camera.position.set(MOBILE?110:76, MOBILE?112:80, MOBILE?380:232);
 const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
 renderer.setSize(innerWidth,innerHeight); renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=0.98; renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -464,6 +489,7 @@ composer.addPass(gradePass);
 
 // ---- floating card (CSS3D, anchored in-world to the tapped body) ----
 let floater=null;
+let activeName=null;
 function buildFloaterHTML(d){
   let h=`<div class="faccent" style="background:${d.color};box-shadow:0 0 12px ${d.color}"></div><div class="fkind">${d.kind}</div><h3>${d.name}</h3><div class="frole">${d.role}</div>`;
   if(d.monitor) h+=`<div class="fsec">monitor catches</div><div class="fmono">${d.monitor}</div>`;
@@ -474,18 +500,59 @@ function buildFloaterHTML(d){
   if(d.out) h+=`<div class="fsec">outbound</div>`+d.out.map(o=>`<div class="fitem">${o}</div>`).join('');
   return h;
 }
-function closeCard(){ if(floater){ scene.remove(floater); floater=null; } document.getElementById('foot').style.opacity='1'; }
+function buildPanelHTML(d){
+  let h=`<button class="close" type="button" aria-label="Close">×</button><div class="kind">${d.kind}</div><h2>${d.name}</h2><div class="crole">${d.role}</div>`;
+  if(d.monitor) h+=`<div class="seclbl">monitor catches</div><div class="mono">${d.monitor}</div>`;
+  if(d.tables) h+=`<div class="seclbl">data layer</div>`+d.tables.map(t=>`<div class="leaf">${t}</div>`).join('');
+  if(d.pipes){
+    h+=`<div class="seclbl">pipelines</div>`;
+    h+=d.pipes.length?d.pipes.map(p=>`<div class="pipe"><div class="ph"><span class="pdot" style="background:${d.color}"></span><span class="pname">${p.n}</span><span class="ptag">${p.tag||''}</span></div><div class="pbody"><div class="inner">${p.d||''}<div class="pid">${p.id||''}</div></div></div></div>`).join(''):`<div class="empty">None yet — still forming.</div>`;
+  }
+  if(d.out) h+=`<div class="seclbl">outbound</div>`+d.out.map(o=>`<div class="leaf">${o}</div>`).join('');
+  return h;
+}
+function setNavActive(name){
+  activeName=name||null;
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.name===activeName));
+}
+function closeCard(){
+  if(floater){ scene.remove(floater); floater=null; }
+  const card=document.getElementById('card'); card.classList.remove('open'); card.innerHTML='';
+  setNavActive(null);
+  document.getElementById('foot').style.opacity='1';
+}
 function openCard(d,obj){
   closeCard();
   const el=document.createElement('div'); el.className='floater'; el.innerHTML=buildFloaterHTML(d);
   el.style.boxShadow=`0 14px 55px rgba(0,0,0,.72),inset 0 1px 0 rgba(255,255,255,.15),0 0 26px ${d.color}22`;
   el.style.borderColor=`${d.color}55`;
-  floater=new CSS3DObject(el); floater.scale.setScalar(0.045); floater.userData.anchor=obj||null;
-  scene.add(floater); document.getElementById('foot').style.opacity='0';
+  floater=new CSS3DObject(el); floater.scale.setScalar(MOBILE?0.0:0.058); floater.userData.anchor=obj||null;
+  scene.add(floater);
+  const card=document.getElementById('card'); card.innerHTML=buildPanelHTML(d); card.classList.add('open');
+  card.querySelector('.close').addEventListener('click',()=>{closeCard();focusOn(null);});
+  card.querySelectorAll('.pipe .ph').forEach(ph=>ph.addEventListener('click',()=>ph.closest('.pipe').classList.toggle('x')));
+  setNavActive(d.name);
+  document.getElementById('foot').style.opacity='0';
 }
-window.__demo=(name)=>{const m=pickables.find(o=>o.userData.card&&o.userData.card.name===(name||'General'));if(m)openCard(m.userData.card,m);};
+function bodyByName(name){return pickables.find(o=>o.userData.card&&o.userData.card.name===name);}
+function showBody(name){const m=bodyByName(name); if(m){openCard(m.userData.card,m); focusOn(m);} return !!m;}
+window.__demo=(name)=>{showBody(name||'General');};
 window.__view=(x,y,z,tx,ty,tz)=>{controls.autoRotate=false;camera.position.set(x,y,z);controls.target.set(tx||0,ty||0,tz||0);controls.update();if(STILL){frames=0;requestAnimationFrame(animate);}};
-window.__focus=(name)=>{const m=pickables.find(o=>o.userData.card&&o.userData.card.name===name); if(m)focusOn(m); return !!m;};
+window.__focus=(name)=>{const m=bodyByName(name); if(m)focusOn(m); return !!m;};
+[
+  ['Center','Carson'],
+  ['Elvis','Elvis'],
+  ['Database','The Database'],
+  ['General','General'],
+  ['Watcher','The Watcher'],
+  ['Workers','Workers'],
+  ['Advisor','The Advisor'],
+  ['Auditor','The Auditor'],
+].forEach(([label,name])=>{
+  const b=document.createElement('button'); b.type='button'; b.textContent=label; b.dataset.name=name;
+  b.addEventListener('click',()=>showBody(name));
+  document.getElementById('nav').appendChild(b);
+});
 
 const ray=new THREE.Raycaster(),m2=new THREE.Vector2();let down=null;
 renderer.domElement.addEventListener('pointerdown',e=>down=[e.clientX,e.clientY]);
