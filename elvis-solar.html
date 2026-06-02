@@ -320,37 +320,30 @@ const SRC_Y=104;
 const source=new THREE.Mesh(new THREE.SphereGeometry(3.0,48,48),new THREE.MeshBasicMaterial({color:0xfffdf6}));
 source.position.set(0,SRC_Y,0); scene.add(source); pickables.push(source);
 const srcLight=new THREE.PointLight(0xfff0d0,2.0,420,1.2); srcLight.position.set(0,SRC_Y,0); scene.add(srcLight);
-const heavenClouds=[];
-function cloudTexture(seed){
-  const S=512,cv=document.createElement('canvas');cv.width=cv.height=S;const x=cv.getContext('2d');
-  const wash=x.createRadialGradient(S/2,S/2,0,S/2,S/2,S/2);wash.addColorStop(0,'rgba(255,255,255,0.42)');wash.addColorStop(0.56,'rgba(255,238,210,0.12)');wash.addColorStop(1,'rgba(0,0,0,0)');
-  x.fillStyle=wash;x.fillRect(0,0,S,S);x.globalCompositeOperation='lighter';
-  for(let i=0;i<34;i++){
-    const a=(i*91+seed*37)%360*Math.PI/180,r=(i*53+seed*19)%170,px=S/2+Math.cos(a)*r,py=S/2+Math.sin(a)*r*0.45;
-    const rr=52+((i*29+seed*13)%92),g=x.createRadialGradient(px,py,0,px,py,rr);
-    g.addColorStop(0,'rgba(255,255,255,0.28)');g.addColorStop(0.46,'rgba(255,246,226,0.10)');g.addColorStop(1,'rgba(0,0,0,0)');
-    x.fillStyle=g;x.fillRect(px-rr,py-rr,rr*2,rr*2);
-  }
+const heavenClouds=[], heavenVeils=[];
+function veilTexture(){
+  const W=384,H=768,cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d');
+  const g=x.createRadialGradient(W/2,0,0,W/2,0,H*0.72);g.addColorStop(0,'rgba(255,255,255,0.58)');g.addColorStop(0.22,'rgba(255,244,220,0.20)');g.addColorStop(0.68,'rgba(255,225,180,0.055)');g.addColorStop(1,'rgba(0,0,0,0)');
+  x.fillStyle=g;x.fillRect(0,0,W,H);x.globalCompositeOperation='destination-out';
+  const edge=x.createLinearGradient(0,0,W,0);edge.addColorStop(0,'rgba(0,0,0,0.8)');edge.addColorStop(0.33,'rgba(0,0,0,0)');edge.addColorStop(0.67,'rgba(0,0,0,0)');edge.addColorStop(1,'rgba(0,0,0,0.8)');
+  x.fillStyle=edge;x.fillRect(0,0,W,H);
   return new THREE.CanvasTexture(cv);
 }
-[
-  [0,SRC_Y+4,-32,250,96,0.24,0],
-  [-98,SRC_Y+1,-45,210,78,0.16,0.8],
-  [105,SRC_Y+2,-42,230,84,0.17,1.6],
-  [-52,SRC_Y-7,18,190,66,0.13,2.1],
-  [60,SRC_Y-8,24,200,70,0.13,2.8],
-  [0,SRC_Y+13,-72,330,118,0.095,3.4],
-].forEach((c,i)=>{const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:cloudTexture(i+1),transparent:true,opacity:c[5],blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}));
-  sp.position.set(c[0],c[1],c[2]);sp.scale.set(c[3],c[4],1);sp.userData={base:c[5],phase:c[6],sx:c[3],sy:c[4]};scene.add(sp);heavenClouds.push(sp);});
-for(let i=0;i<28;i++){
-  const f=i/27,a=i*2.399,px=(f-0.5)*310+Math.sin(i*1.7)*18,py=SRC_Y-2+Math.sin(i*0.9)*10,pz=-38+Math.cos(i*1.3)*34;
-  const sx=28+((i*23)%38),sy=12+((i*17)%22),op=0.055+((i*11)%20)/1000;
+for(let i=0;i<72;i++){
+  const f=i/71,row=i%3,px=(f-0.5)*390+Math.sin(i*1.31)*28,py=SRC_Y+8-row*11+Math.sin(i*0.77)*9,pz=-82+row*36+Math.cos(i*1.13)*28;
+  const sx=54+((i*31)%92),sy=18+((i*19)%42),op=0.048+((i*7)%38)/1000;
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:ROUND,color:0xfff3dc,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}));
-  sp.position.set(px,py,pz);sp.scale.set(sx,sy,1);sp.material.rotation=a;sp.userData={base:op,phase:i*0.43,sx,sy};scene.add(sp);heavenClouds.push(sp);
+  sp.position.set(px,py,pz);sp.scale.set(sx,sy,1);sp.material.rotation=i*0.37;sp.userData={base:op,phase:i*0.39,sx,sy};scene.add(sp);heavenClouds.push(sp);
 }
-// a wide horizon halo so heaven reads as a canopy over the whole system, not just a point.
-(function(){const geo=new THREE.RingGeometry(112,176,220,1);geo.rotateX(-Math.PI/2);geo.translate(0,SRC_Y-5,0);
-  scene.add(new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0xfff0d2,transparent:true,opacity:0.095,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide})));})();
+[
+  [0,SRC_Y-23,-6,165,250,0.30,0],
+  [-72,SRC_Y-18,-22,100,205,0.105,1.2],
+  [76,SRC_Y-18,-24,105,210,0.105,2.4],
+].forEach((v,i)=>{const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:veilTexture(),transparent:true,opacity:v[5],blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}));
+  sp.position.set(v[0],v[1],v[2]);sp.scale.set(v[3],v[4],1);sp.userData={base:v[5],phase:v[6],sx:v[3],sy:v[4]};scene.add(sp);heavenVeils.push(sp);});
+// celestial arcs: a crown above the source, not a mechanical orbit.
+(function(){[92,136,184].forEach((r,i)=>{const geo=new THREE.RingGeometry(r-0.45,r+0.45,220,1,Math.PI*0.08,Math.PI*0.84);geo.rotateX(-Math.PI/2.38);geo.translate(0,SRC_Y+4+i*3,-36-i*18);
+  scene.add(new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0xfff1d2,transparent:true,opacity:[0.15,0.095,0.06][i],blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide})));});})();
 // the glory — radiating rays + concentric halos, billboarded so it reads from any angle
 (function(){const S=512,cv=document.createElement('canvas');cv.width=cv.height=S;const x=cv.getContext('2d');const c=S/2;
   let g=x.createRadialGradient(c,c,0,c,c,c);g.addColorStop(0,'rgba(255,255,255,0.95)');g.addColorStop(0.06,'rgba(255,247,228,0.7)');g.addColorStop(0.22,'rgba(255,222,170,0.14)');g.addColorStop(1,'rgba(0,0,0,0)');
@@ -360,10 +353,10 @@ for(let i=0;i<28;i++){
     x.save();x.rotate(ang);const lg=x.createLinearGradient(0,0,len,0);lg.addColorStop(0,'rgba(255,248,225,0)');lg.addColorStop(0.12,'rgba(255,244,214,0.55)');lg.addColorStop(1,'rgba(255,255,255,0)');
     x.fillStyle=lg;x.beginPath();x.moveTo(0,-w);x.lineTo(len,-0.4);x.lineTo(len,0.4);x.lineTo(0,w);x.closePath();x.fill();x.restore();}
   x.strokeStyle='rgba(255,240,210,1)';[c*0.42,c*0.62].forEach((rr,k)=>{x.lineWidth=k?1.2:1.9;x.globalAlpha=k?0.26:0.4;x.beginPath();x.arc(0,0,rr,0,6.2832);x.stroke();});x.globalAlpha=1;
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,opacity:0.82,blending:THREE.AdditiveBlending,depthWrite:false}));
-  sp.position.set(0,SRC_Y,0);sp.scale.setScalar(118);scene.add(sp);source.userData.glory=sp;})();
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,opacity:0.58,blending:THREE.AdditiveBlending,depthWrite:false}));
+  sp.position.set(0,SRC_Y,0);sp.scale.setScalar(96);scene.add(sp);source.userData.glory=sp;})();
 // soft cloud cradle (heaven sits in light)
-(function(){const cv=document.createElement('canvas');cv.width=cv.height=256;const x=cv.getContext('2d');const gr=x.createRadialGradient(128,128,8,128,128,128);gr.addColorStop(0,'rgba(255,244,220,0.55)');gr.addColorStop(0.5,'rgba(220,206,188,0.12)');gr.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=gr;x.fillRect(0,0,256,256);const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,opacity:0.48,blending:THREE.AdditiveBlending,depthWrite:false}));sp.position.set(0,SRC_Y,-4);sp.scale.setScalar(156);scene.add(sp);})();
+(function(){const cv=document.createElement('canvas');cv.width=cv.height=256;const x=cv.getContext('2d');const gr=x.createRadialGradient(128,128,8,128,128,128);gr.addColorStop(0,'rgba(255,244,220,0.52)');gr.addColorStop(0.5,'rgba(220,206,188,0.11)');gr.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=gr;x.fillRect(0,0,256,256);const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,opacity:0.34,blending:THREE.AdditiveBlending,depthWrite:false}));sp.position.set(0,SRC_Y,-4);sp.scale.setScalar(150);scene.add(sp);})();
 source.userData.card={kind:'Heaven · above',name:'North Star',role:'The representation of heaven: the wide source above the whole system, where trust, power, revelation, and purpose flow from. Its light spreads over the system and pours down the axis into Carson, Elvis, and the database foundation below.',color:'#fff0d4',monitor:null,out:null,pipes:null};
 
 // BOTTOM — the database: the foundation. "The DB is the identity."
@@ -683,8 +676,9 @@ function animate(){
   for(let i=0;i<BR_N;i++){const f=(brSeed[i]+t*0.22)%1.0,dir=(i%2?1:-1),x=dir>0?-13+26*f:13-26*f;brPos[i*3]=x;brPos[i*3+1]=Math.sin(f*3.14159)*2.3*dir;brPos[i*3+2]=Math.sin(f*6.28+brSeed[i]*6.28)*0.9;}
   brGeo.attributes.position.needsUpdate=true;
   const b=1+0.04*Math.sin(t*1.3); carson.scale.setScalar(b); elvis.scale.setScalar(1+0.04*Math.sin(t*1.3+1.4));
-  if(source.userData.glory){source.userData.glory.material.rotation+=dt*0.025; source.userData.glory.scale.setScalar(118*(1+0.035*Math.sin(t*0.55)));}
-  heavenClouds.forEach((sp,i)=>{const p=sp.userData.phase;sp.material.opacity=sp.userData.base*(0.82+0.18*Math.sin(t*0.32+p));sp.scale.set(sp.userData.sx*(1+0.025*Math.sin(t*0.18+p)),sp.userData.sy*(1+0.035*Math.cos(t*0.2+p)),1);sp.position.x+=Math.sin(t*0.16+p)*dt*0.16;});
+  if(source.userData.glory){source.userData.glory.material.rotation+=dt*0.025; source.userData.glory.scale.setScalar(96*(1+0.035*Math.sin(t*0.55)));}
+  heavenClouds.forEach(sp=>{const p=sp.userData.phase;sp.material.opacity=sp.userData.base*(0.84+0.16*Math.sin(t*0.22+p));sp.scale.set(sp.userData.sx*(1+0.018*Math.sin(t*0.12+p)),sp.userData.sy*(1+0.028*Math.cos(t*0.15+p)),1);sp.position.x+=Math.sin(t*0.11+p)*dt*0.11;});
+  heavenVeils.forEach(sp=>{const p=sp.userData.phase;sp.material.opacity=sp.userData.base*(0.78+0.22*Math.sin(t*0.38+p));sp.scale.set(sp.userData.sx*(1+0.025*Math.sin(t*0.16+p)),sp.userData.sy*(1+0.018*Math.cos(t*0.14+p)),1);});
   crystal.rotation.y+=dt*0.12; crystal.rotation.x+=dt*0.05; lattice.rotation.y-=dt*0.08; lattice.rotation.x+=dt*0.045;
   planets.forEach(p=>{p.pivot.rotation.y+=dt*p.pl.speed;p.mesh.rotation.y+=dt*0.3;if(p.om)p.om.uniforms.uAngle.value=-p.pivot.rotation.y;if(p.mesh.userData.adisk)p.mesh.userData.adisk.rotation.y+=dt*0.5;});
   for(let i=0;i<moons.length;i++) moons[i].pivot.rotation.y+=dt*moons[i].speed;
