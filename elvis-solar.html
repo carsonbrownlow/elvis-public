@@ -113,8 +113,22 @@ document.getElementById('scene').appendChild(renderer.domElement);
 const labelR=new CSS2DRenderer(); labelR.setSize(innerWidth,innerHeight);
 labelR.domElement.style.cssText='position:fixed;top:0;left:0;pointer-events:none'; document.body.appendChild(labelR.domElement);
 const controls=new OrbitControls(camera,renderer.domElement);
-controls.enableDamping=true; controls.dampingFactor=0.05; controls.minDistance=40; controls.maxDistance=420;
-controls.autoRotate=true; controls.autoRotateSpeed=0.18; controls.enablePan=false;
+controls.enableDamping=true; controls.dampingFactor=0.06; controls.minDistance=14; controls.maxDistance=620;
+controls.autoRotate=true; controls.autoRotateSpeed=0.16; controls.enablePan=true; controls.screenSpacePanning=true;
+controls.rotateSpeed=0.9; controls.zoomSpeed=1.15; controls.panSpeed=0.7;
+// ── navigation: tap-to-focus (fly to + track any body) + auto-spin that yields to you ──
+let focusObj=null, camTween=null, lastInteract=-100; const _tv=new THREE.Vector3();
+function frameDist(obj){let br=6;if(obj.geometry&&obj.geometry.computeBoundingSphere){obj.geometry.computeBoundingSphere();br=(obj.geometry.boundingSphere&&obj.geometry.boundingSphere.radius)||6;}return Math.max(34,br*6+18);}
+function focusOn(obj){
+  focusObj=obj; controls.autoRotate=false; controls.enabled=false;
+  const toT=new THREE.Vector3(), toP=new THREE.Vector3();
+  if(obj){obj.getWorldPosition(toT);const d=frameDist(obj);toP.copy(toT).addScaledVector(new THREE.Vector3(0.55,0.42,1).normalize(),d);}
+  else{toT.set(0,0,0);toP.copy(camEnd);}
+  camTween={fromP:camera.position.clone(),toP,fromT:controls.target.clone(),toT,el:0,dur:1.15};
+}
+function navStart(){lastInteract=clock.elapsedTime;controls.autoRotate=false;if(camTween){camTween=null;controls.enabled=true;}focusObj=null;}
+controls.addEventListener('start',navStart);
+controls.addEventListener('end',()=>{lastInteract=clock.elapsedTime;});
 
 // soft round particle sprite — kills square point-sprites everywhere
 const ROUND=(function(){const s=64,cv=document.createElement('canvas');cv.width=cv.height=s;const x=cv.getContext('2d');const g=x.createRadialGradient(s/2,s/2,0,s/2,s/2,s/2);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(0.4,'rgba(255,255,255,0.5)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,s,s);return new THREE.CanvasTexture(cv);})();
@@ -429,6 +443,7 @@ function closeCard(){card.classList.remove('open'); document.getElementById('foo
 document.getElementById('cardClose').onclick=closeCard;
 window.__demo=(name)=>{const m=pickables.find(o=>o.userData.card&&o.userData.card.name===(name||'General'));if(m)openCard(m.userData.card);};
 window.__view=(x,y,z,tx,ty,tz)=>{controls.autoRotate=false;camera.position.set(x,y,z);controls.target.set(tx||0,ty||0,tz||0);controls.update();if(STILL){frames=0;requestAnimationFrame(animate);}};
+window.__focus=(name)=>{const m=pickables.find(o=>o.userData.card&&o.userData.card.name===name); if(m)focusOn(m); return !!m;};
 
 const ray=new THREE.Raycaster(),m2=new THREE.Vector2();let down=null;
 renderer.domElement.addEventListener('pointerdown',e=>down=[e.clientX,e.clientY]);
@@ -436,7 +451,7 @@ renderer.domElement.addEventListener('pointerup',e=>{
   if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>7)return;
   m2.x=(e.clientX/innerWidth)*2-1;m2.y=-(e.clientY/innerHeight)*2+1;
   ray.setFromCamera(m2,camera);const hit=ray.intersectObjects(pickables,false)[0];
-  if(hit)openCard(hit.object.userData.card); else closeCard();
+  if(hit){openCard(hit.object.userData.card); focusOn(hit.object);} else {closeCard(); focusOn(null);}
 });
 
 const clock=new THREE.Clock();
@@ -449,7 +464,18 @@ function animate(){
   const dt=Math.min(clock.getDelta(),0.05),t=clock.elapsedTime;
   if(holdT<1){holdT=Math.min(1,holdT+dt*0.9); camera.position.copy(camStart); camera.lookAt(0,0,0);}
   else if(introT<1){introT=Math.min(1,introT+dt*0.22); const s=introT, e=s*s*s*(s*(s*6.0-15.0)+10.0); camera.position.lerpVectors(camStart,camEnd,e); camera.lookAt(0,0,0); if(introT>=1)controls.autoRotate=true;}
-  else controls.update();
+  else if(camTween){
+    camTween.el+=dt; const k=Math.min(1,camTween.el/camTween.dur), e=1-Math.pow(1-k,3);
+    camera.position.lerpVectors(camTween.fromP,camTween.toP,e);
+    controls.target.lerpVectors(camTween.fromT,camTween.toT,e);
+    camera.lookAt(controls.target);
+    if(k>=1){camTween=null;controls.enabled=true;lastInteract=t;}
+  } else if(focusObj){
+    focusObj.getWorldPosition(_tv); controls.target.lerp(_tv,0.12); controls.update();
+  } else {
+    if(!STILL) controls.autoRotate=(t-lastInteract)>3.5;
+    controls.update();
+  }
   for(let i=0;i<starMats.length;i++) starMats[i].uniforms.uTime.value=t;
   for(let i=0;i<planetMats.length;i++) planetMats[i].uniforms.uTime.value=t;
   for(let i=0;i<helixMats.length;i++) helixMats[i].uniforms.uTime.value=t;
