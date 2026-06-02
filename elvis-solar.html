@@ -380,12 +380,13 @@ function glowRing(r,color,head,base,parent){
   (parent||scene).add(new THREE.Mesh(geo,mat)); return mat;
 }
 
-// event bus — the spine every signal flows through
+// communication layer — the shared stream every signal flows through
 glowRing(28,0xffc98a,false,0.42);
 const busNode=new THREE.Mesh(new THREE.SphereGeometry(1.5,20,20),new THREE.MeshStandardMaterial({color:0xffcaa0,emissive:0xffcaa0,emissiveIntensity:1.0,roughness:.5}));
 busNode.position.set(0,0,28); scene.add(busNode); pickables.push(busNode);
-busNode.userData={card:{kind:'The spine',name:'Event Bus',role:'~/.workers/events.log — every pipeline appends one tagged line here, and both agents’ monitors tail it and react. The single nerve of the system.',color:'#ffcaa0',monitor:null,out:null,pipes:null}};
-const blab=lab('event bus'); blab.position.set(0,2.6,0); busNode.add(blab); blab.userData.el.classList.add('on');
+busNode.userData={card:{kind:'Communication layer',name:'Communication Layer',role:'The shared signal stream between watchers, pollers, workers, and agents. Under the hood it is ~/.workers/events.log: each pipeline appends a tagged line, and Elvis monitors that stream to decide what needs attention or action.',color:'#ffcaa0',monitor:null,out:null,pipes:null,
+  tables:['Inbound signals — Telegram, iMessage, Gmail, Calendar, Shortcuts, bookmarks, photos','Tagged events — [TELEGRAM], [IMESSAGE], [INTEL], [INBOX], [HEARTBEAT]','Consumers — General acts on the stream; Watcher adds observations; workers report task signal']}};
+const blab=lab('communication layer'); blab.position.set(0,2.6,0); busNode.add(blab); blab.userData.el.classList.add('on');
 
 // ── planet shader: a lit world — surface + bands, lit by the binary at center, a glowing atmosphere rim ──
 const PLANET_VERT=`varying vec3 vPos;varying vec3 vN;varying vec3 vNW;varying vec3 vView;varying vec3 vWorld;
@@ -506,7 +507,7 @@ const STORY=[
   {name:'Carson', note:'At the heart is the relationship. Carson is the center of gravity; Elvis exists to serve this point.'},
   {name:'Elvis', note:'Elvis is the persona and partner, but the model is only the vehicle. Identity comes from what it loads.'},
   {name:'The Database', note:'The database is the foundation. Any model that loads this memory and operating context becomes Elvis.'},
-  {name:'Event Bus', note:'The event bus is the nervous system: every watcher, poller, and worker writes tagged signal into one stream.'},
+  {name:'Communication Layer', note:'This is the communication layer: every watcher, poller, and worker writes tagged signal into one shared stream so Elvis knows what happened and what should happen next.'},
   {name:'General', note:'General is the acting layer: messages, execution, outbound comms, and day-to-day work.'},
   {name:'The Watcher', note:'The Watcher is the observation layer: always watching, never messaging directly, forwarding signal to General.'},
   {name:'Workers', note:'Workers are temporary force multipliers: spun up for a task, then gone when the job is finished.'},
