@@ -118,15 +118,23 @@ controls.autoRotate=true; controls.autoRotateSpeed=0.18; controls.enablePan=fals
 
 // soft round particle sprite — kills square point-sprites everywhere
 const ROUND=(function(){const s=64,cv=document.createElement('canvas');cv.width=cv.height=s;const x=cv.getContext('2d');const g=x.createRadialGradient(s/2,s/2,0,s/2,s/2,s/2);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(0.4,'rgba(255,255,255,0.5)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,s,s);return new THREE.CanvasTexture(cv);})();
-// subtle starfield
-(function(){const g=new THREE.BufferGeometry(),n=1100,p=new Float32Array(n*3);
- for(let i=0;i<n;i++){const r=900+Math.random()*1700,t=Math.random()*6.283,ph=Math.acos(2*Math.random()-1);
- p[i*3]=r*Math.sin(ph)*Math.cos(t);p[i*3+1]=r*Math.sin(ph)*Math.sin(t);p[i*3+2]=r*Math.cos(ph);}
- g.setAttribute('position',new THREE.BufferAttribute(p,3));
- scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0x8896b4,size:2.0,map:ROUND,sizeAttenuation:false,transparent:true,opacity:.7,depthWrite:false})));})();
-// nebula haze
-(function(){function tex(c){const cv=document.createElement('canvas');cv.width=cv.height=256;const x=cv.getContext('2d');const gr=x.createRadialGradient(128,128,0,128,128,128);gr.addColorStop(0,c);gr.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=gr;x.fillRect(0,0,256,256);return new THREE.CanvasTexture(cv);}
-[[-230,70,-380,'rgba(70,105,185,0.6)',440],[250,-50,-350,'rgba(175,120,60,0.5)',400],[70,160,-440,'rgba(125,80,165,0.42)',480]].forEach(n=>{const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex(n[3]),transparent:true,opacity:0.5,blending:THREE.AdditiveBlending,depthWrite:false}));s.position.set(n[0],n[1],n[2]);s.scale.setScalar(n[4]);scene.add(s);});})();
+// starfield — shader points with size variance (power-law), color temperature, and gentle twinkle
+const starfieldMats=[];
+(function(){const n=1500,pos=new Float32Array(n*3),siz=new Float32Array(n),col=new Float32Array(n*3),pha=new Float32Array(n);
+ for(let i=0;i<n;i++){const r=900+Math.random()*1800,t=Math.random()*6.283,ph=Math.acos(2*Math.random()-1);
+  pos[i*3]=r*Math.sin(ph)*Math.cos(t);pos[i*3+1]=r*Math.sin(ph)*Math.sin(t);pos[i*3+2]=r*Math.cos(ph);
+  siz[i]=Math.pow(Math.random(),6.0)*3.6+0.6;
+  const tmp=Math.random(),c=new THREE.Color().setHSL(0.62-tmp*0.5,0.45,0.66+tmp*0.18);
+  col[i*3]=c.r;col[i*3+1]=c.g;col[i*3+2]=c.b;pha[i]=Math.random()*6.283;}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('aSize',new THREE.BufferAttribute(siz,1));g.setAttribute('aColor',new THREE.BufferAttribute(col,3));g.setAttribute('aPhase',new THREE.BufferAttribute(pha,1));
+ const m=new THREE.ShaderMaterial({transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,uniforms:{uTime:{value:0}},
+   vertexShader:`attribute float aSize;attribute vec3 aColor;attribute float aPhase;uniform float uTime;varying vec3 vC;varying float vTw;
+     void main(){vC=aColor;vTw=0.55+0.45*sin(uTime*1.4+aPhase);gl_PointSize=aSize;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+   fragmentShader:`varying vec3 vC;varying float vTw;void main(){vec2 d=gl_PointCoord-0.5;float r=dot(d,d);if(r>0.25)discard;float a=smoothstep(0.25,0.0,r)*vTw*0.85;gl_FragColor=vec4(vC,a);}`});
+ starfieldMats.push(m); scene.add(new THREE.Points(g,m));})();
+// nebula haze — layered cool + warm clouds for depth (cool anchors the warm-gold system)
+(function(){function tex(c){const cv=document.createElement('canvas');cv.width=cv.height=256;const x=cv.getContext('2d');const gr=x.createRadialGradient(128,128,0,128,128,128);gr.addColorStop(0,c);gr.addColorStop(0.55,c.replace(/[\d.]+\)$/,'0.05)'));gr.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=gr;x.fillRect(0,0,256,256);return new THREE.CanvasTexture(cv);}
+[[-300,90,-460,'rgba(58,98,190,0.55)',640,0.55],[300,-30,-420,'rgba(180,120,58,0.5)',560,0.5],[60,200,-520,'rgba(120,78,170,0.4)',600,0.45],[-180,-150,-400,'rgba(46,120,150,0.4)',460,0.4],[360,150,-560,'rgba(150,90,150,0.32)',520,0.35],[-60,-60,-300,'rgba(70,90,160,0.3)',360,0.4]].forEach(n=>{const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex(n[3]),transparent:true,opacity:n[5],blending:THREE.AdditiveBlending,depthWrite:false}));s.position.set(n[0],n[1],n[2]);s.scale.setScalar(n[4]);scene.add(s);});})();
 
 scene.add(new THREE.AmbientLight(0x2c3650,1.0));
 scene.add(new THREE.PointLight(0xffd8a0,1.7,0,0.9));
@@ -198,6 +206,11 @@ function star(hot,cool,glow,x,name,role,cls){
 }
 const carson=star(0xffe3a0,0xd07c22,0xffe7c0,13,'Carson','You. The whole system exists for you — every body here orbits this point. The north star is your mission.','');
 const elvis =star(0xffc785,0xc0531a,0xffb060,-13,'Elvis','The persona — your partner at the heart of it all. But what makes Elvis *Elvis* doesn’t live in the model; it lives in the database at the foot of this axis. The model is just the vehicle.','');
+// energy bridge between Carson + Elvis — the symbiosis, made visible (particles flowing both ways across the heart)
+const BR_N=40, brGeo=new THREE.BufferGeometry(), brPos=new Float32Array(BR_N*3), brSeed=new Float32Array(BR_N);
+for(let i=0;i<BR_N;i++){brSeed[i]=Math.random();}
+brGeo.setAttribute('position',new THREE.BufferAttribute(brPos,3));
+heart.add(new THREE.Points(brGeo,new THREE.PointsMaterial({color:0xffe6c0,size:1.7,map:ROUND,transparent:true,opacity:0.85,blending:THREE.AdditiveBlending,depthWrite:false})));
 
 // ───────── THE VERTICAL AXIS — source (top) · the binary (center) · the database (foundation) ─────────
 // the spine: a DNA DOUBLE HELIX — identity itself — bounded between the database (below) and heaven (above), never past them
@@ -328,7 +341,7 @@ const planetMats=[];
 function makePlanetMat(color,atmo,dim){const m=new THREE.ShaderMaterial({uniforms:{uTime:{value:0},uColor:{value:new THREE.Color(color).convertSRGBToLinear()},uAtmo:{value:new THREE.Color(atmo).convertSRGBToLinear()},uDim:{value:dim}},vertexShader:PLANET_VERT,fragmentShader:PLANET_FRAG});planetMats.push(m);return m;}
 function makeAtmoMat(atmo,dim){return new THREE.ShaderMaterial({uniforms:{uAtmo:{value:new THREE.Color(atmo).convertSRGBToLinear()},uDim:{value:dim}},vertexShader:ATMO_VERT,fragmentShader:ATMO_FRAG,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.BackSide});}
 
-const planets=[];
+const planets=[], moons=[];
 const INCL=[[0.05,0.03],[-0.07,0.04],[0.09,-0.05],[-0.04,0.08]];
 PLANETS.forEach((pl,pi)=>{
   const orbitGroup=new THREE.Object3D(); orbitGroup.rotation.x=INCL[pi][0]; orbitGroup.rotation.z=INCL[pi][1]; scene.add(orbitGroup);
@@ -346,6 +359,18 @@ PLANETS.forEach((pl,pi)=>{
     const ag=new THREE.BufferGeometry();ag.setAttribute('position',new THREE.BufferAttribute(ap,3));
     const adisk=new THREE.Points(ag,new THREE.PointsMaterial({color:pl.color,size:1.9,map:ROUND,transparent:true,opacity:0.55,blending:THREE.AdditiveBlending,depthWrite:false}));
     adisk.rotation.x=1.15; adisk.rotation.z=0.35; mesh.add(adisk); mesh.userData.adisk=adisk;
+  }
+  // PIPELINES AS MOONS — each agent becomes its own little system; one moon per pipeline orbiting it
+  if(pl.pipes && pl.pipes.length){
+    const moonHost=new THREE.Object3D(); moonHost.position.x=pl.R; pivot.add(moonHost);
+    pl.pipes.forEach((pp,mi)=>{
+      const mPivot=new THREE.Object3D(); mPivot.rotation.x=0.5+mi*0.45; mPivot.rotation.y=mi*1.7; moonHost.add(mPivot);
+      const mr=pl.size*1.85+mi*1.15;
+      const moon=new THREE.Mesh(new THREE.SphereGeometry(0.6,16,16),new THREE.MeshBasicMaterial({color:0xfff0d6}));
+      moon.position.x=mr; mPivot.add(moon);
+      moon.add(new THREE.Mesh(new THREE.SphereGeometry(1.15,12,12),new THREE.MeshBasicMaterial({color:pl.color,transparent:true,opacity:0.45,blending:THREE.AdditiveBlending,depthWrite:false})));
+      moons.push({pivot:mPivot,speed:0.5+mi*0.13});
+    });
   }
   mesh.userData={card:{kind:pl.kind,name:pl.name,role:pl.role,color:'#'+pl.color.toString(16),monitor:pl.monitor,out:pl.out,pipes:pl.pipes}}; pickables.push(mesh);
   const l=lab(pl.name); l.position.set(0,pl.size+2.4,0); mesh.add(l); l.userData.el.classList.add('on');
@@ -428,6 +453,7 @@ function animate(){
   for(let i=0;i<starMats.length;i++) starMats[i].uniforms.uTime.value=t;
   for(let i=0;i<planetMats.length;i++) planetMats[i].uniforms.uTime.value=t;
   for(let i=0;i<helixMats.length;i++) helixMats[i].uniforms.uTime.value=t;
+  for(let i=0;i<starfieldMats.length;i++) starfieldMats[i].uniforms.uTime.value=t;
   crysMat.uniforms.uTime.value=t;
   busNode.scale.setScalar(1+0.14*Math.sin(t*2.1)); busNode.material.emissiveIntensity=0.8+0.5*Math.sin(t*2.1);
   for(let i=0;i<FLOW_N;i++){const f=(flowSeed[i]+t*0.045)%1.0; const y=FLOW_Y0+(FLOW_Y1-FLOW_Y0)*f; const a=f*HELIX_TURNS*6.28318+(i%2)*Math.PI;
@@ -435,10 +461,13 @@ function animate(){
     const env=Math.min(1,f/0.1)*Math.min(1,(1-f)/0.12); flowCol[i*3]=env;flowCol[i*3+1]=env;flowCol[i*3+2]=env;}
   flowGeo.attributes.position.needsUpdate=true; flowGeo.attributes.color.needsUpdate=true;
   heart.rotation.y+=dt*0.45;
+  for(let i=0;i<BR_N;i++){const f=(brSeed[i]+t*0.22)%1.0,dir=(i%2?1:-1),x=dir>0?-13+26*f:13-26*f;brPos[i*3]=x;brPos[i*3+1]=Math.sin(f*3.14159)*2.3*dir;brPos[i*3+2]=Math.sin(f*6.28+brSeed[i]*6.28)*0.9;}
+  brGeo.attributes.position.needsUpdate=true;
   const b=1+0.04*Math.sin(t*1.3); carson.scale.setScalar(b); elvis.scale.setScalar(1+0.04*Math.sin(t*1.3+1.4));
   if(source.userData.glory){source.userData.glory.material.rotation+=dt*0.035; source.userData.glory.scale.setScalar(80*(1+0.04*Math.sin(t*0.7)));}
   crystal.rotation.y+=dt*0.12; crystal.rotation.x+=dt*0.05; lattice.rotation.y-=dt*0.08; lattice.rotation.x+=dt*0.045;
   planets.forEach(p=>{p.pivot.rotation.y+=dt*p.pl.speed;p.mesh.rotation.y+=dt*0.3;if(p.om)p.om.uniforms.uAngle.value=-p.pivot.rotation.y;if(p.mesh.userData.adisk)p.mesh.userData.adisk.rotation.y+=dt*0.5;});
+  for(let i=0;i<moons.length;i++) moons[i].pivot.rotation.y+=dt*moons[i].speed;
   composer.render(); labelR.render(scene,camera);
   if(!(STILL && ++frames>6)) requestAnimationFrame(animate);
 }
