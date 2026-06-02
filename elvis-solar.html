@@ -53,6 +53,7 @@
     border:1px solid rgba(160,180,230,.34);border-radius:16px;padding:17px 19px;
     box-shadow:0 12px 50px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.14);color:#e9ecf2;
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .floater .faccent{height:3px;width:42px;border-radius:2px;margin-bottom:13px}
   .floater .fkind{font-size:11px;text-transform:uppercase;letter-spacing:.13em;color:#8a93a6}
   .floater h3{font-size:23px;margin:4px 0 9px;font-weight:600;letter-spacing:-.01em}
   .floater .frole{font-size:13px;color:#aeb8c9;line-height:1.5}
@@ -230,7 +231,7 @@ function star(hot,cool,glow,x,name,role,cls){
   const m=new THREE.Mesh(new THREE.SphereGeometry(4.1,72,72),makeStarMat(hot,cool,3.4,1.0));
   m.position.x=x; heart.add(m);
   // soft outer corona glow
-  m.add(new THREE.Mesh(new THREE.SphereGeometry(7.0,40,40),new THREE.MeshBasicMaterial({color:glow,transparent:true,opacity:.12,blending:THREE.AdditiveBlending,depthWrite:false})));
+  m.add(new THREE.Mesh(new THREE.SphereGeometry(8.4,40,40),new THREE.MeshBasicMaterial({color:glow,transparent:true,opacity:.17,blending:THREE.AdditiveBlending,depthWrite:false})));
   m.userData={card:{kind:'The center',name,role,color:'#'+glow.toString(16),pipes:null}}; pickables.push(m);
   return m;
 }
@@ -241,6 +242,8 @@ const BR_N=40, brGeo=new THREE.BufferGeometry(), brPos=new Float32Array(BR_N*3),
 for(let i=0;i<BR_N;i++){brSeed[i]=Math.random();}
 brGeo.setAttribute('position',new THREE.BufferAttribute(brPos,3));
 heart.add(new THREE.Points(brGeo,new THREE.PointsMaterial({color:0xffe6c0,size:1.7,map:ROUND,transparent:true,opacity:0.85,blending:THREE.AdditiveBlending,depthWrite:false})));
+// heart glow — a soft warm radiance anchoring the binary as the luminous center
+(function(){const cv=document.createElement('canvas');cv.width=cv.height=256;const x=cv.getContext('2d');const gr=x.createRadialGradient(128,128,4,128,128,128);gr.addColorStop(0,'rgba(255,226,170,0.55)');gr.addColorStop(0.45,'rgba(255,180,120,0.12)');gr.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=gr;x.fillRect(0,0,256,256);const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,opacity:0.4,blending:THREE.AdditiveBlending,depthWrite:false}));sp.position.set(0,0,0);sp.scale.setScalar(58);scene.add(sp);})();
 
 // ───────── THE VERTICAL AXIS — source (top) · the binary (center) · the database (foundation) ─────────
 // the spine: a DNA DOUBLE HELIX — identity itself — bounded between the database (below) and heaven (above), never past them
@@ -396,9 +399,9 @@ PLANETS.forEach((pl,pi)=>{
     pl.pipes.forEach((pp,mi)=>{
       const mPivot=new THREE.Object3D(); mPivot.rotation.x=0.5+mi*0.45; mPivot.rotation.y=mi*1.7; moonHost.add(mPivot);
       const mr=pl.size*1.85+mi*1.15;
-      const moon=new THREE.Mesh(new THREE.SphereGeometry(0.6,16,16),new THREE.MeshBasicMaterial({color:0xfff0d6}));
+      const moon=new THREE.Mesh(new THREE.SphereGeometry(0.78,16,16),new THREE.MeshBasicMaterial({color:0xfff2db}));
       moon.position.x=mr; mPivot.add(moon);
-      moon.add(new THREE.Mesh(new THREE.SphereGeometry(1.15,12,12),new THREE.MeshBasicMaterial({color:pl.color,transparent:true,opacity:0.45,blending:THREE.AdditiveBlending,depthWrite:false})));
+      moon.add(new THREE.Mesh(new THREE.SphereGeometry(1.7,14,14),new THREE.MeshBasicMaterial({color:pl.color,transparent:true,opacity:0.5,blending:THREE.AdditiveBlending,depthWrite:false})));
       moons.push({pivot:mPivot,speed:0.5+mi*0.13});
     });
   }
@@ -440,7 +443,7 @@ composer.addPass(gradePass);
 // ---- floating card (CSS3D, anchored in-world to the tapped body) ----
 let floater=null;
 function buildFloaterHTML(d){
-  let h=`<div class="fkind">${d.kind}</div><h3>${d.name}</h3><div class="frole">${d.role}</div>`;
+  let h=`<div class="faccent" style="background:${d.color};box-shadow:0 0 12px ${d.color}"></div><div class="fkind">${d.kind}</div><h3>${d.name}</h3><div class="frole">${d.role}</div>`;
   if(d.monitor) h+=`<div class="fsec">monitor catches</div><div class="fmono">${d.monitor}</div>`;
   if(d.tables) h+=`<div class="fsec">data layer</div>`+d.tables.map(t=>`<div class="fitem">${t}</div>`).join('');
   if(d.pipes&&d.pipes.length){
@@ -453,6 +456,8 @@ function closeCard(){ if(floater){ scene.remove(floater); floater=null; } docume
 function openCard(d,obj){
   closeCard();
   const el=document.createElement('div'); el.className='floater'; el.innerHTML=buildFloaterHTML(d);
+  el.style.boxShadow=`0 14px 55px rgba(0,0,0,.72),inset 0 1px 0 rgba(255,255,255,.15),0 0 26px ${d.color}22`;
+  el.style.borderColor=`${d.color}55`;
   floater=new CSS3DObject(el); floater.scale.setScalar(0.045); floater.userData.anchor=obj||null;
   scene.add(floater); document.getElementById('foot').style.opacity='0';
 }
