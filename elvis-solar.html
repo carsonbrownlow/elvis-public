@@ -98,6 +98,7 @@ const PLANETS = [
       {n:'imessage', id:'general.elvis.imessage', tag:'[IMESSAGE]', host:'in-session', d:'You → Elvis over iMessage. Reads chat.db (needs Full-Disk-Access) so it runs in-session, not launchd.'},
       {n:'heartbeat', id:'general.elvis.heartbeat', tag:'[HEARTBEAT]', host:'launchd', d:'The scheduler — fires every timed task from heartbeats.yaml (~24 recurring + one-time).'},
       {n:'inbox', id:'general.elvis.inbox', tag:'[INBOX] [INTEL]', host:'launchd', d:'Your inbox items + intel relays from the Watcher.'},
+      {n:'prune', id:'general.elvis.prune', tag:'[PRUNE]', host:'launchd', d:'Daily maintenance — prunes stale state + keeps the system clean.'},
     ]},
   { id:'watcher', name:'The Watcher', kind:'Agent · always-on', color:0x4fd6a6, R:98, speed:0.045, size:3.5,
     role:'Always-on observer. Sees everything, acts on nothing — watches your world (including your Telegram) to learn you faster, and relays signal to General.',
@@ -110,6 +111,7 @@ const PLANETS = [
       {n:'bookmarks', id:'watcher.elvis.bookmarks', tag:'[BOOKMARK]', host:'launchd', d:'Pulls your X bookmarks for triage.'},
       {n:'photos', id:'watcher.elvis.photos', tag:'[PHOTO]', host:'in-session', d:'Observes new photos as they sync. Reads the Photos library (needs FDA) so it runs in-session.'},
       {n:'imessage', id:'watcher.elvis.imessage', tag:'[CARSON_IMESSAGE]', host:'in-session', d:'Observes all your texts to learn your voice + life. Reads chat.db (FDA) so it runs in-session.'},
+      {n:'liveness', id:'watcher.elvis.liveness', tag:'[WATCHER_PING]', host:'launchd', d:'The Watcher\'s own health check — answers liveness pings to prove it\'s alive + reasoning, not just running.'},
     ]},
   { id:'auditor', name:'The Auditor', kind:'Agent · forming', color:0xb89bff, R:134, speed:0.026, size:2.9, faint:true,
     role:'Independent devil’s-advocate on the big calls. Not built yet — a planet still forming.', monitor:null, out:null, pipes:[] },
@@ -412,6 +414,26 @@ PLANETS.forEach((pl,pi)=>{
 // decorative concentric rings — a cool, faint field that stays BEHIND the colored orbits (not competing gold)
 [80,150,210].forEach(r=>glowRing(r,0x52628a,false,0.045));
 
+// WORKERS — the 5th fleet member: ephemeral agents, one per task, gone when done. A flickering swarm, not a solid world.
+let workersFX=null;
+(function(){
+  const WR=48;
+  glowRing(WR,0xcdd6e8,true,0.10);
+  const wGroup=new THREE.Object3D(); wGroup.rotation.x=0.06; wGroup.rotation.z=-0.05; scene.add(wGroup);
+  const wPivot=new THREE.Object3D(); wPivot.rotation.y=3.5; wGroup.add(wPivot);
+  const wHost=new THREE.Object3D(); wHost.position.x=WR; wPivot.add(wHost);
+  const WN=18, wp=new Float32Array(WN*3), wCol=new Float32Array(WN*3), wPhase=new Float32Array(WN);
+  for(let i=0;i<WN;i++){const a=Math.random()*6.283,r=Math.random()*3.4,y=(Math.random()-0.5)*3.2;wp[i*3]=Math.cos(a)*r;wp[i*3+1]=y;wp[i*3+2]=Math.sin(a)*r;wPhase[i]=Math.random()*6.283;}
+  const wg=new THREE.BufferGeometry(); wg.setAttribute('position',new THREE.BufferAttribute(wp,3)); wg.setAttribute('color',new THREE.BufferAttribute(wCol,3));
+  const swarm=new THREE.Points(wg,new THREE.PointsMaterial({size:2.1,map:ROUND,vertexColors:true,transparent:true,opacity:0.95,blending:THREE.AdditiveBlending,depthWrite:false}));
+  wHost.add(swarm);
+  const wHit=new THREE.Mesh(new THREE.SphereGeometry(5.5,8,8),new THREE.MeshBasicMaterial({visible:false})); wHost.add(wHit); pickables.push(wHit);
+  wHit.userData={card:{kind:'Fleet · ephemeral',name:'Workers',color:'#cdd6e8',monitor:null,out:null,pipes:null,
+    role:'Ephemeral agents — one spun up per task, gone the moment it is done. They flicker in and out as work comes and goes (e.g. the photo-pipeline worker). Never persistent; always exactly as many as the work needs.'}};
+  const wlab=lab('Workers'); wlab.position.set(0,5,0); wHost.add(wlab); wlab.userData.el.classList.add('on');
+  workersFX={wPivot,wCol,wPhase,WN,wg};
+})();
+
 const composer=new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene,camera));
 composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.46,0.55,0.72));
@@ -514,6 +536,9 @@ function animate(){
   crystal.rotation.y+=dt*0.12; crystal.rotation.x+=dt*0.05; lattice.rotation.y-=dt*0.08; lattice.rotation.x+=dt*0.045;
   planets.forEach(p=>{p.pivot.rotation.y+=dt*p.pl.speed;p.mesh.rotation.y+=dt*0.3;if(p.om)p.om.uniforms.uAngle.value=-p.pivot.rotation.y;if(p.mesh.userData.adisk)p.mesh.userData.adisk.rotation.y+=dt*0.5;});
   for(let i=0;i<moons.length;i++) moons[i].pivot.rotation.y+=dt*moons[i].speed;
+  if(workersFX){const wf=workersFX; wf.wPivot.rotation.y+=dt*0.085;
+    for(let i=0;i<wf.WN;i++){const e=Math.pow(Math.max(0,Math.sin(t*1.25+wf.wPhase[i])),1.6); wf.wCol[i*3]=e*0.82;wf.wCol[i*3+1]=e*0.9;wf.wCol[i*3+2]=e;}
+    wf.wg.attributes.color.needsUpdate=true;}
   // floating card: anchor to its body (offset up), billboard to face camera, scale grows as you zoom in
   if(floater){
     const a=floater.userData.anchor;
