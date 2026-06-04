@@ -329,12 +329,31 @@ function veilTexture(){
   x.fillStyle=edge;x.fillRect(0,0,W,H);
   return new THREE.CanvasTexture(cv);
 }
-for(let i=0;i<72;i++){
-  const f=i/71,row=i%3,px=(f-0.5)*390+Math.sin(i*1.31)*28,py=SRC_Y+8-row*11+Math.sin(i*0.77)*9,pz=-82+row*36+Math.cos(i*1.13)*28;
-  const sx=54+((i*31)%92),sy=18+((i*19)%42),op=0.048+((i*7)%38)/1000;
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:ROUND,color:0xfff3dc,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false}));
-  sp.position.set(px,py,pz);sp.scale.set(sx,sy,1);sp.material.rotation=i*0.37;sp.userData={base:op,phase:i*0.39,sx,sy};scene.add(sp);heavenClouds.push(sp);
+// a billowy cloud texture — overlapping soft puffs with feathered edges (reads as a real light-cloud, not a flat dot)
+const CLOUD=(function(){const s=256,cv=document.createElement('canvas');cv.width=cv.height=s;const x=cv.getContext('2d');x.globalCompositeOperation='lighter';
+  const puffs=[[128,118,90,0.34],[90,134,60,0.24],[168,130,62,0.24],[112,104,52,0.22],[150,108,52,0.22],[128,150,74,0.18],[74,152,44,0.15],[186,150,44,0.15],[128,128,128,0.09]];
+  puffs.forEach(p=>{const g=x.createRadialGradient(p[0],p[1],0,p[0],p[1],p[2]);g.addColorStop(0,'rgba(255,255,255,'+p[3]+')');g.addColorStop(0.45,'rgba(255,250,236,'+(p[3]*0.42).toFixed(3)+')');g.addColorStop(1,'rgba(255,244,224,0)');x.fillStyle=g;x.beginPath();x.arc(p[0],p[1],p[2],0,6.2832);x.fill();});
+  return new THREE.CanvasTexture(cv);})();
+// heaven cloud bank — luminous billows catching the source's light: brightest + warmest near the orb, fading warm into the dark at the edges
+for(let i=0;i<66;i++){
+  const f=i/65, side=(f-0.5)*2, row=i%4;
+  const px=side*222 + Math.sin(i*2.27)*30;
+  const py=SRC_Y+16 - row*12 + Math.sin(i*0.83)*12;
+  const pz=-104 + row*40 + Math.cos(i*1.21)*30;
+  const lum=Math.max(0,1-Math.abs(side)*0.82);                 // 1 near the source -> ~0 at the edges
+  const sx=80+((i*37)%128)*(0.65+0.7*lum), sy=42+((i*23)%70)*(0.65+0.6*lum);
+  const op=(0.045+0.185*lum)*(0.72+0.28*Math.sin(i*1.07));     // brighter where heaven's light reaches
+  const col=new THREE.Color(0xffe6bc).lerp(new THREE.Color(0xfff8ee),lum); // warm gold -> warm white near the source
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:CLOUD,color:col,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true}));
+  sp.position.set(px,py,pz);sp.scale.set(sx,sy,1);sp.material.rotation=Math.sin(i*1.7)*0.5;sp.userData={base:op,phase:i*0.39,sx,sy};scene.add(sp);heavenClouds.push(sp);
 }
+// god-rays — soft crepuscular beams of heaven's light fanning down from the source over the system
+const GODRAYS=(function(){const W=512,H=512,cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d');x.globalCompositeOperation='lighter';x.translate(W/2,6);
+  const N=15;for(let i=0;i<N;i++){const a=(i/(N-1)-0.5)*2; const ang=a*0.66; const len=H*(0.72+0.24*Math.cos(a*2.7)); const w=7+7*Math.abs(Math.sin(i*1.9));
+    x.save();x.rotate(ang);const g=x.createLinearGradient(0,0,0,len);const top=(0.14+0.10*(1-Math.abs(a)));g.addColorStop(0,'rgba(255,248,228,0)');g.addColorStop(0.12,'rgba(255,248,228,'+(top*0.28).toFixed(3)+')');g.addColorStop(0.32,'rgba(255,248,228,'+top.toFixed(3)+')');g.addColorStop(0.66,'rgba(255,244,220,'+(top*0.26).toFixed(3)+')');g.addColorStop(1,'rgba(255,240,210,0)');
+    x.fillStyle=g;x.beginPath();x.moveTo(-w*0.18,0);x.lineTo(-w,len);x.lineTo(w,len);x.lineTo(w*0.18,0);x.closePath();x.fill();x.restore();}
+  return new THREE.CanvasTexture(cv);})();
+(function(){const SC=212;const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:GODRAYS,color:0xfff2d6,transparent:true,opacity:0.30,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true}));sp.position.set(0,SRC_Y-SC/2,-30);sp.scale.set(SC,SC,1);sp.userData={base:0.30,phase:0.9,sx:SC,sy:SC};scene.add(sp);heavenVeils.push(sp);})();
 [
   [0,SRC_Y-23,-6,165,250,0.30,0],
   [-72,SRC_Y-18,-22,100,205,0.105,1.2],
