@@ -317,7 +317,7 @@ scene.add(flow);
 
 // TOP — HEAVEN: a broad cloud canopy + radiant source, pouring light down the axis.
 const SRC_Y=104;
-const source=new THREE.Mesh(new THREE.SphereGeometry(3.0,48,48),new THREE.MeshBasicMaterial({color:0xfffdf6}));
+const source=new THREE.Mesh(new THREE.SphereGeometry(5.6,72,72),makeStarMat(0xfff4e2,0xffcf82,2.6,1.05));
 source.position.set(0,SRC_Y,0); scene.add(source); pickables.push(source);
 const srcLight=new THREE.PointLight(0xfff0d0,2.0,420,1.2); srcLight.position.set(0,SRC_Y,0); scene.add(srcLight);
 const heavenClouds=[], heavenVeils=[];
@@ -346,14 +346,14 @@ for(let i=0;i<72;i++){
   scene.add(new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0xfff1d2,transparent:true,opacity:[0.15,0.095,0.06][i],blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide})));});})();
 // the glory — radiating rays + concentric halos, billboarded so it reads from any angle
 (function(){const S=512,cv=document.createElement('canvas');cv.width=cv.height=S;const x=cv.getContext('2d');const c=S/2;
-  let g=x.createRadialGradient(c,c,0,c,c,c);g.addColorStop(0,'rgba(255,255,255,0.95)');g.addColorStop(0.06,'rgba(255,247,228,0.7)');g.addColorStop(0.22,'rgba(255,222,170,0.14)');g.addColorStop(1,'rgba(0,0,0,0)');
+  let g=x.createRadialGradient(c,c,0,c,c,c);g.addColorStop(0,'rgba(255,250,240,0.30)');g.addColorStop(0.12,'rgba(255,244,220,0.22)');g.addColorStop(0.32,'rgba(255,222,170,0.10)');g.addColorStop(1,'rgba(0,0,0,0)');
   x.fillStyle=g;x.fillRect(0,0,S,S);
   x.globalCompositeOperation='lighter';x.translate(c,c);
   const RAYS=48;for(let i=0;i<RAYS;i++){const ang=i/RAYS*6.28318,len=c*(0.55+0.4*((i*97)%13)/13),w=(i%2?1.4:2.7);
     x.save();x.rotate(ang);const lg=x.createLinearGradient(0,0,len,0);lg.addColorStop(0,'rgba(255,248,225,0)');lg.addColorStop(0.12,'rgba(255,244,214,0.55)');lg.addColorStop(1,'rgba(255,255,255,0)');
     x.fillStyle=lg;x.beginPath();x.moveTo(0,-w);x.lineTo(len,-0.4);x.lineTo(len,0.4);x.lineTo(0,w);x.closePath();x.fill();x.restore();}
   x.strokeStyle='rgba(255,240,210,1)';[c*0.42,c*0.62].forEach((rr,k)=>{x.lineWidth=k?1.2:1.9;x.globalAlpha=k?0.26:0.4;x.beginPath();x.arc(0,0,rr,0,6.2832);x.stroke();});x.globalAlpha=1;
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,opacity:0.58,blending:THREE.AdditiveBlending,depthWrite:false}));
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,opacity:0.32,blending:THREE.AdditiveBlending,depthWrite:false}));
   sp.position.set(0,SRC_Y,0);sp.scale.setScalar(96);scene.add(sp);source.userData.glory=sp;})();
 // soft cloud cradle (heaven sits in light)
 (function(){const cv=document.createElement('canvas');cv.width=cv.height=256;const x=cv.getContext('2d');const gr=x.createRadialGradient(128,128,8,128,128,128);gr.addColorStop(0,'rgba(255,244,220,0.52)');gr.addColorStop(0.5,'rgba(220,206,188,0.11)');gr.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=gr;x.fillRect(0,0,256,256);const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,opacity:0.34,blending:THREE.AdditiveBlending,depthWrite:false}));sp.position.set(0,SRC_Y,-4);sp.scale.setScalar(150);scene.add(sp);})();
