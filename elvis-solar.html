@@ -147,10 +147,23 @@ const PLANETS = [
       {n:'imessage', id:'watcher.elvis.imessage', tag:'[CARSON_IMESSAGE]', host:'in-session', d:'Observes all your texts to learn your voice + life. Reads chat.db (FDA) so it runs in-session.'},
       {n:'liveness', id:'watcher.elvis.liveness', tag:'[WATCHER_PING]', host:'launchd', d:'The Watcher\'s own health check — answers liveness pings to prove it\'s alive + reasoning, not just running.'},
     ]},
-  { id:'auditor', name:'The Auditor', kind:'Agent · forming', color:0xb89bff, R:134, speed:0.026, size:2.9, faint:true,
-    role:'Independent devil’s-advocate on the big calls. Not built yet — a planet still forming.', monitor:null, out:null, pipes:[] },
-  { id:'advisor', name:'The Advisor', kind:'Vehicle · chat', color:0xffa64d, R:170, speed:0.017, size:2.5, faint:true,
-    role:'Elvis on a chat product (Claude.ai / ChatGPT). DB-connected — becomes Elvis the moment you talk to it.', monitor:null, out:null, pipes:[] },
+  { id:'auditor', name:'The Auditor', kind:'Agent · always-on', color:0xb89bff, R:134, speed:0.026, size:2.9,
+    role:'The standing adversarial critic — the gate, not the hand. Verifies changes before they go live and keeps the DB structure honest. Returns GO / NO-GO / CONDITIONAL verdicts that General acts on; never flips a switch, never writes truth, never messages you.',
+    monitor:'AUDIT_REQUEST · AUDIT_TICK · AUDITOR_PING',
+    out:['Verdicts to General via [AUDIT_RESULT]','Durable findings written to audit_log','Never acts · never messages you'],
+    pipes:[
+      {n:'audit', id:'auditor.elvis.audit', tag:'[AUDIT_REQUEST]', host:'in-session', d:'Receives an audit task (cross_instance_intel to_domain=auditor), runs the three-rung adversarial-verify ladder against the live DB, and returns a GO / NO-GO / CONDITIONAL verdict.'},
+      {n:'dbhealth', id:'auditor.elvis.dbhealth', tag:'[AUDIT_TICK]', host:'launchd', d:'Daily DB-structure-honesty sweep — stale or contradictory records, rule leaks, demoted-rule retrieval reachability.'},
+      {n:'watchdog', id:'auditor.elvis.watchdog', tag:'[AUDITOR_PING]', host:'launchd', d:'Liveness watchdog — restarts the Auditor the instant it stops answering pings (every 10 min).'},
+    ]},
+  { id:'advisor', name:'The Advisor', kind:'Vehicle · chat', color:0xffa64d, R:170, speed:0.017, size:2.5,
+    role:'Elvis on a chat product (Claude.ai / ChatGPT) — DB-connected, becomes Elvis the moment you talk to it. Now boots from its own separate, lighter sequence: the thinking, identity, voice and symbiosis rules scoped out of the General set — no monitors, pollers, or Watcher duties.',
+    monitor:null,
+    out:['Reads + writes the shared DB truth on its own lane','Registers as Advisor Elvis S<n>','Hands operational work to General'],
+    pipes:[
+      {n:'boot', id:'full_boot_v2_advisor', tag:'[ADVISOR BOOT]', host:'on-connect', d:'Its own lighter boot — the strategy, identity, voice and symbiosis subset of the binder, with the General operational set stripped out.'},
+      {n:'intel', id:'advisor.lane', tag:'[INTEL]', host:'on-connect', d:'Claims only its own advisor lane of cross_instance_intel, so it never over-reads signal meant for General or the Watcher.'},
+    ]},
 ];
 
 const scene=new THREE.Scene();
