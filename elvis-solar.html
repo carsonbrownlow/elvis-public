@@ -148,7 +148,7 @@ const PLANETS = [
       {n:'liveness', id:'watcher.elvis.liveness', tag:'[WATCHER_PING]', host:'launchd', d:'The Watcher\'s own health check — answers liveness pings to prove it\'s alive + reasoning, not just running.'},
     ]},
   { id:'auditor', name:'The Auditor', kind:'Agent · always-on', color:0xb89bff, R:134, speed:0.026, size:2.9,
-    role:'The standing adversarial critic — the gate, not the hand. Verifies changes before they go live and keeps the DB structure honest. Returns GO / NO-GO / CONDITIONAL verdicts that General acts on; never flips a switch, never writes truth, never messages you.',
+    role:'The standing adversarial critic — the gate, not the hand. Two mandates: verify changes before they go live and keep the DB structure honest; and be the outside angle on Carson and Elvis — the devil\'s advocate on decisions, plans and patterns, the perspective they cannot see from the inside. Returns GO / NO-GO / CONDITIONAL verdicts and grounded counter-perspectives that General acts on; never flips a switch, never writes truth, never messages you directly.',
     monitor:'AUDIT_REQUEST · AUDIT_TICK · AUDITOR_PING',
     out:['Verdicts to General via [AUDIT_RESULT]','Durable findings written to audit_log','Never acts · never messages you'],
     pipes:[
